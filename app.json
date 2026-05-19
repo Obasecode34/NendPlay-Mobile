@@ -1,0 +1,48 @@
+{
+  "expo": {
+    "name": "NendPlay",
+    "slug": "nendplay",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#07071A"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.impactmodel.nendplay"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#07071A"
+      },
+      "package": "com.impactmodel.nendplay",
+      "permissions": [
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "INTERNET"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-secure-store",
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Allow NendPlay to access your microphone."
+        }
+      ]
+    ],
+    "scheme": "nendplay",
+    "extra": {
+      "apiUrl": "http://10.36.141.186:5000/api"
+    }
+  }
+}

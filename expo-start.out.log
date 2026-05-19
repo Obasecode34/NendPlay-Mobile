@@ -1,0 +1,24 @@
+Starting project at D:\Documents\IM_Techified\NendPlay\nendplay\mobile
+Starting Metro Bundler
+
+warning: Bundler cache is empty, rebuilding (this may take a minute)
+ WARN  Failed to download the latest version of React Native DevTools. Using a fallback version instead. Connect to the internet or check your network settings.
+Waiting on http://localhost:8085
+Logs for your project will appear below.
+Android .\App.js ░░░░░░░░░░░░░░░░  0.0% (0/1)
+Android .\App.js ░░░░░░░░░░░░░░░░  1.0% (1/1)
+Android .\App.js ░░░░░░░░░░░░░░░░  2.4% (  7/147)
+Android .\App.js ░░░░░░░░░░░░░░░░  3.8% ( 50/256)
+Android .\App.js ▓▓░░░░░░░░░░░░░░ 15.7% (136/349)
+Android .\App.js ▓▓░░░░░░░░░░░░░░ 16.8% (188/458)
+Android .\App.js ▓▓▓▓░░░░░░░░░░░░ 31.2% (369/661)
+Android .\App.js ▓▓▓▓▓░░░░░░░░░░░ 37.4% (434/721)
+Android .\App.js ▓▓▓▓▓▓▓▓░░░░░░░░ 54.7% (602/814)
+Android .\App.js ▓▓▓▓▓▓▓▓▓▓▓▓░░░░ 76.2% (819/938)
+Android .\App.js ▓▓▓▓▓▓▓▓▓▓▓▓░░░░ 80.0% ( 884/1001)
+Android .\App.js ▓▓▓▓▓▓▓▓▓▓▓▓░░░░ 80.4% (1008/1151)
+Android .\App.js ▓▓▓▓▓▓▓▓▓▓▓▓▓░░░ 81.9% (1132/1259)
+Android .\App.js ▓▓▓▓▓▓▓▓▓▓▓▓▓░░░ 87.2% (1224/1311)
+Android .\App.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░ 90.0% (1295/1365)
+Android .\App.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░ 93.7% (1459/1511)
+Android Bundled 60007ms App.js (1550 modules)
