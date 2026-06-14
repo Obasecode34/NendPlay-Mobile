@@ -17,7 +17,7 @@ const PLAN_ICONS = { mobile: '📱', basic: '💻', standard: '⭐', premium: '�
 
 export default function SubscriptionScreen({ navigation }) {
   const { theme } = useThemeStore()
-  const { user } = useAuthStore()
+  const { user, isAuthenticated } = useAuthStore()
   const insets = useSafeAreaInsets()
   const c = theme.colors
 
@@ -31,16 +31,25 @@ export default function SubscriptionScreen({ navigation }) {
 
   const fetchData = async () => {
     try {
-      const [plansRes, subRes] = await Promise.all([
-        subscriptionService.getPlans(),
-        subscriptionService.getMySubscription(),
-      ])
+      const plansPromise = subscriptionService.getPlans()
+      const subPromise = isAuthenticated
+        ? subscriptionService.getMySubscription()
+        : Promise.resolve({ data: { data: null } })
+      const [plansRes, subRes] = await Promise.all([plansPromise, subPromise])
       setPlans(plansRes.data.data.plans)
       setCurrentSub(subRes.data.data)
     } catch {} finally { setLoading(false) }
   }
 
   const handleSubscribe = async (planId) => {
+    if (!isAuthenticated) {
+      Alert.alert('Account Required', 'Create an account or sign in before subscribing to a package.', [
+        { text: 'Sign In', onPress: () => navigation.navigate('Login') },
+        { text: 'Create Account', onPress: () => navigation.navigate('Register') },
+        { text: 'Cancel', style: 'cancel' },
+      ])
+      return
+    }
     if (!user?.email) {
       Alert.alert('Email Required', 'Please add an email to your profile first')
       return

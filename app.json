@@ -6,15 +6,18 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#07071A"
-    },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.impactmodel.nendplay"
+      "bundleIdentifier": "com.impactmodel.nendplay",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSFaceIDUsageDescription": "Allow NendPlay to use Face ID for faster sign in.",
+        "NSLocationWhenInUseUsageDescription": "Allow NendPlay to show news happening near your location.",
+        "NSPhotoLibraryUsageDescription": "Allow NendPlay to choose a profile picture from your photo library."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -25,7 +28,15 @@
       "permissions": [
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
-        "INTERNET"
+        "READ_MEDIA_VIDEO",
+        "READ_MEDIA_AUDIO",
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
+        "INTERNET",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.POST_NOTIFICATIONS"
       ]
     },
     "web": {
@@ -34,15 +45,86 @@
     "plugins": [
       "expo-secure-store",
       [
-        "expo-av",
+        "expo-notifications",
         {
-          "microphonePermission": "Allow NendPlay to access your microphone."
+          "color": "#7C3AED"
         }
-      ]
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#07071A"
+        }
+      ],
+      [
+        "./plugins/withGoogleMobileAds",
+        {
+          // "androidAppId": "ca-app-pub-8160598841675696~4647379521",
+          "androidAppId": "ca-app-pub-6883303133741538~7229887820",
+          "iosAppId": "ca-app-pub-8160598841675696~1490733147"
+        }
+      ],
+      [
+        "expo-video",
+        {
+          "supportsBackgroundPlayback": true,
+          "supportsPictureInPicture": true
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow NendPlay to choose a profile picture from your photo library."
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow NendPlay to show videos and music stored on this device.",
+          "savePhotosPermission": "Allow NendPlay to save media to this device.",
+          "isAccessMediaLocationEnabled": false
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow NendPlay to show news happening near your location."
+        }
+      ],
+      "expo-router",
+      "expo-web-browser"
     ],
     "scheme": "nendplay",
     "extra": {
-      "apiUrl": "http://10.36.141.186:5000/api"
+      "apiUrl": "https://api.nendplay.com/api",
+      "adMobAdsEnabled": true,
+      "adMobUseTestAds": false,
+      "adMobSsvRewardsEnabled": true,
+      "adMobRewardedInterstitialEnabled": false,
+      "adMobSsvRewardsNote": "Set adMobSsvRewardsEnabled to true only after enabling SSV in AdMob for the real rewarded ad unit.",
+      // "adMobAndroidBannerId": "ca-app-pub-8160598841675696/3026872170",
+      // "adMobIosBannerId": "ca-app-pub-8160598841675696/7617157791",
+      // "adMobAndroidRewardedId": "ca-app-pub-8160598841675696/8463335603",
+      // "adMobIosRewardedId": "ca-app-pub-8160598841675696/2687960828",
+      // "adMobAndroidRewardedInterstitialId": "ca-app-pub-8160598841675696/4913615597",
+      // "adMobIosRewardedInterstitialId": "ca-app-pub-8160598841675696/9782798898",
+      // "adMobAndroidNativeId": "ca-app-pub-8160598841675696/2296548353",
+      // "adMobIosNativeId": "ca-app-pub-8160598841675696/8215923596",
+      // "adMobAndroidAppOpenId": "ca-app-pub-8160598841675696/6279721476",
+      // "adMobIosAppOpenId": "ca-app-pub-8160598841675696/5338174896",
+      "adMobAndroidBannerId": "ca-app-pub-6883303133741538/9786154005",
+      "adMobAndroidRewardedId": "ca-app-pub-6883303133741538/7086256866",
+      "adMobAndroidRewardedInterstitialId": "ca-app-pub-6883303133741538/2464485570",
+      "adMobAndroidNativeId": "ca-app-pub-6883303133741538/4230574995",
+      "adMobAndroidAppOpenId": "ca-app-pub-6883303133741538/1476419142",
+      "googleWebClientId": "",
+      "googleAndroidClientId": "",
+      "googleIosClientId": "",
+      "eas": {
+        "projectId": "5c9a249b-babd-4f64-87d2-074c7fef169e"
+      }
     }
   }
 }

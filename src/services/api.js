@@ -6,12 +6,16 @@
 import 'react-native-url-polyfill/auto'
 import axios from 'axios'
 import * as SecureStore from 'expo-secure-store'
+import Constants from 'expo-constants'
 
 // Replace with your backend URL
 // For development: use your computer's local IP (not localhost)
 // localhost on mobile = the phone itself, not your computer
 // Find your IP: ipconfig (Windows) → look for IPv4 under Wi-Fi
-const BASE_URL = 'http://10.36.141.186:5000/api' // ← UPDATE THIS
+const BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL ||
+  Constants.expoConfig?.extra?.apiUrl ||
+  'https://api.nendplay.com/api'
 
 const api = axios.create({
   baseURL: BASE_URL,

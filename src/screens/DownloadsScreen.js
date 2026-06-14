@@ -2,13 +2,18 @@
 import React, { useEffect, useState } from 'react'
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Alert, RefreshControl,
+  ActivityIndicator, Alert, RefreshControl, Linking,
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useNavigation } from '@react-navigation/native'
 import * as Device from 'expo-device'
 import useThemeStore from '../stores/themeStore'
+import useAuthStore from '../services/authStore.native'
 import { downloadService } from '../services/index'
+import { deleteLocalDownload, getLocalDownloads, getReadableUri, removeLocalDownloadRecord } from '../services/localDownloadStore'
+
+const DOWNLOAD_PAGE_LIMIT = 30
 
 const CATEGORY_LABELS = {
   movies: '🎬 Movies', music: '🎵 Music', tvShows: '📺 TV Shows',
@@ -22,8 +27,11 @@ const formatSize = (bytes) => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-export default function DownloadsScreen() {
+export default function DownloadsScreen({ embedded = false, contentType, navigation }) {
+  const fallbackNavigation = useNavigation()
+  const nav = navigation || fallbackNavigation
   const { theme } = useThemeStore()
+  const { isAuthenticated } = useAuthStore()
   const insets = useSafeAreaInsets()
   const c = theme.colors
 
@@ -33,21 +41,100 @@ export default function DownloadsScreen() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [activeTab, setActiveTab] = useState('all')
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
 
   const deviceId = Device.osInternalBuildId || 'mobile-device'
 
-  useEffect(() => { fetchAll() }, [])
+  useEffect(() => {
+    fetchAll()
+  }, [isAuthenticated, contentType])
 
-  const fetchAll = async () => {
+  const groupDownloads = (items = []) => {
+    const buckets = {
+      movies: [],
+      music: [],
+      tvShows: [],
+      videos: [],
+      podcasts: [],
+      shorts: [],
+      documents: [],
+      other: [],
+    }
+    items.forEach((item) => {
+      const type = item.contentSnapshot?.type || ''
+      if (type === 'movie') buckets.movies.push(item)
+      else if (type === 'music') buckets.music.push(item)
+      else if (type === 'tv_show') buckets.tvShows.push(item)
+      else if (type === 'video') buckets.videos.push(item)
+      else if (type === 'podcast') buckets.podcasts.push(item)
+      else if (type === 'short') buckets.shorts.push(item)
+      else if (item.contentType === 'document') buckets.documents.push(item)
+      else buckets.other.push(item)
+    })
+    return buckets
+  }
+
+  const mergeDownloads = (serverItems = [], localItems = []) => {
+    const seen = new Set()
+    return [...localItems, ...serverItems].filter((item) => {
+      const key = `${item.contentType}:${item.contentId || item._id}:${item.storageKey || ''}`
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    }).sort((a, b) => new Date(b.downloadedAt || 0) - new Date(a.downloadedAt || 0))
+  }
+
+  const mergeGrouped = (current = {}, next = {}) => {
+    const merged = { ...current }
+    Object.entries(next).forEach(([key, items]) => {
+      merged[key] = [...(merged[key] || []), ...(items || [])]
+    })
+    return merged
+  }
+
+  const fetchAll = async (pageToLoad = 1, append = false) => {
+    const localItems = await getLocalDownloads({ contentType })
+    if (!isAuthenticated) {
+      setDownloads(localItems)
+      setGrouped(groupDownloads(localItems))
+      setDeviceInfo(null)
+      setPage(1)
+      setHasMore(false)
+      setLoading(false)
+      setRefreshing(false)
+      setLoadingMore(false)
+      return
+    }
     try {
+      const params = { deviceId, page: pageToLoad, limit: DOWNLOAD_PAGE_LIMIT }
+      if (contentType) params.contentType = contentType
       const [dlRes, devRes] = await Promise.all([
-        downloadService.getAll({ deviceId }),
+        downloadService.getAll(params),
         downloadService.getDevices(),
       ])
-      setDownloads(dlRes.data.data.downloads)
-      setGrouped(dlRes.data.data.grouped)
+      const nextDownloads = dlRes.data.data.downloads || []
+      const pagination = dlRes.data.data.pagination || {}
+      const mergedDownloads = append
+        ? mergeDownloads([...downloads, ...nextDownloads], localItems)
+        : mergeDownloads(nextDownloads, localItems)
+      setDownloads(mergedDownloads)
+      setGrouped(groupDownloads(mergedDownloads))
       setDeviceInfo(devRes.data.data)
-    } catch {} finally { setLoading(false); setRefreshing(false) }
+      setPage(pageToLoad)
+      setHasMore(pageToLoad < (pagination.pages || 1))
+    } catch {
+      setDownloads(localItems)
+      setGrouped(groupDownloads(localItems))
+      setHasMore(false)
+    } finally { setLoading(false); setRefreshing(false); setLoadingMore(false) }
+  }
+
+  const loadMore = () => {
+    if (loading || loadingMore || !hasMore) return
+    setLoadingMore(true)
+    fetchAll(page + 1, true)
   }
 
   const handleDelete = async (id) => {
@@ -56,12 +143,52 @@ export default function DownloadsScreen() {
       {
         text: 'Remove', style: 'destructive', onPress: async () => {
           try {
-            await downloadService.delete(id)
-            fetchAll()
+            const item = downloads.find((download) => download._id === id)
+            if (item?.localOnly) {
+              await deleteLocalDownload(item.storageKey)
+              await removeLocalDownloadRecord(id)
+            } else {
+              const result = await downloadService.delete(id)
+              const storageKey = result.data?.data?.storageKey
+              await deleteLocalDownload(storageKey)
+            }
+            fetchAll(1, false)
           } catch { Alert.alert('Error', 'Failed to remove') }
         }
       }
     ])
+  }
+
+  const handleOpen = async (item) => {
+    const localUri = await getReadableUri(item.storageKey)
+    const url = localUri || item.contentSnapshot?.fileUrl
+    if (!url) {
+      Alert.alert('Open download', 'This downloaded item does not have a readable file link.')
+      return
+    }
+    if (item.contentType === 'media') {
+      nav?.navigate('MediaPlayer', {
+        mediaId: item.contentId,
+        localUri: url,
+        offlineMedia: item.contentSnapshot,
+      })
+      return
+    }
+
+    if (item.contentType === 'document') {
+      nav?.navigate('DocumentReader', {
+        document: {
+          ...item.contentSnapshot,
+          id: item.contentId,
+          storageKey: url,
+          localUri: url,
+        },
+      })
+      return
+    }
+
+    try { await Linking.openURL(url) }
+    catch { Alert.alert('Open download', 'Unable to open this file on your device.') }
   }
 
   const getItems = () => activeTab === 'all' ? downloads : (grouped[activeTab] || [])
@@ -118,11 +245,14 @@ export default function DownloadsScreen() {
           <Text style={s.itemMeta}>
             {snap.type?.replace('_', ' ')} · {formatSize(snap.fileSize)}
           </Text>
-          <TouchableOpacity style={s.playBtn} onPress={() => {}}>
+          <TouchableOpacity style={s.playBtn} onPress={() => handleOpen(item)}>
             <Text style={s.playBtnText}>
-              {item.contentType === 'media' ? 'Play' : 'Open'}
+              {item.contentType === 'media' ? 'Play' : 'Read'}
             </Text>
           </TouchableOpacity>
+          {item.contentType === 'document' ? (
+            <Text style={s.itemMeta}>Read-only full PDF access</Text>
+          ) : null}
         </View>
         <TouchableOpacity onPress={() => handleDelete(item._id)} style={{ padding: 4 }}>
           <Ionicons name="trash-outline" size={18} color="#EF4444" />
@@ -133,10 +263,12 @@ export default function DownloadsScreen() {
 
   return (
     <View style={s.container}>
-      <View style={s.header}>
-        <Text style={s.title}>Downloads</Text>
-        <Text style={s.subtitle}>{downloads.length} files saved offline</Text>
-      </View>
+      {!embedded ? (
+        <View style={s.header}>
+          <Text style={s.title}>Downloads</Text>
+          <Text style={s.subtitle}>{downloads.length} files saved offline</Text>
+        </View>
+      ) : null}
 
       {/* Device slots */}
       {deviceInfo && (
@@ -167,7 +299,9 @@ export default function DownloadsScreen() {
           <Ionicons name="download-outline" size={48} color={c.textMuted} />
           <Text style={{ color: c.text, fontSize: 18, fontWeight: '700' }}>No downloads yet</Text>
           <Text style={{ color: c.textMuted, fontSize: 14 }}>
-            Download media to watch offline
+            {contentType === 'document'
+              ? 'Download PDFs from NovelHub to unlock full access here'
+              : 'Download media to watch offline'}
           </Text>
         </View>
       ) : (
@@ -207,9 +341,12 @@ export default function DownloadsScreen() {
             contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 20 }}
             refreshControl={
               <RefreshControl refreshing={refreshing}
-                onRefresh={() => { setRefreshing(true); fetchAll() }}
+                onRefresh={() => { setRefreshing(true); fetchAll(1, false) }}
                 tintColor={c.primary} />
             }
+            onEndReached={loadMore}
+            onEndReachedThreshold={0.55}
+            ListFooterComponent={loadingMore ? <ActivityIndicator color={c.primary} style={{ marginVertical: 18 }} /> : null}
           />
         </>
       )}

@@ -15,34 +15,43 @@ export default function RegisterScreen({ navigation }) {
   const { setAuth } = useAuthStore()
   const c = theme.colors
 
-  const [authMethod, setAuthMethod] = useState('credentials')
   const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({
     profileName: '', email: '', username: '',
-    password: '', referralCode: '',
+    password: '', confirmPassword: '', referralCode: '',
   })
 
+  const getErrorMessage = (err) => {
+    const data = err.response?.data
+    if (Array.isArray(data?.errors) && data.errors.length) return data.errors[0]
+    return data?.message || 'Please try again'
+  }
+
   const handleRegister = async () => {
+    if (form.password !== form.confirmPassword) {
+      Alert.alert('Registration Failed', 'Passwords do not match')
+      return
+    }
+
     setLoading(true)
     try {
       const payload = {
-        authMethod,
+        email: form.email.trim(),
         profileName: form.profileName,
+        username: form.username.trim(),
+        password: form.password,
+        confirmPassword: form.confirmPassword,
         referralCode: form.referralCode || undefined,
-      }
-      if (authMethod === 'email') {
-        payload.email = form.email
-      } else {
-        payload.username = form.username
-        payload.password = form.password
       }
 
       const res = await authService.register(payload)
       const { user, accessToken, refreshToken } = res.data.data
       await setAuth(user, accessToken, refreshToken)
+      navigation.navigate('MainTabs')
     } catch (err) {
-      Alert.alert('Registration Failed', err.response?.data?.message || 'Please try again')
+      Alert.alert('Registration Failed', getErrorMessage(err))
     } finally {
       setLoading(false)
     }
@@ -59,14 +68,6 @@ export default function RegisterScreen({ navigation }) {
     logoText: { color: 'white', fontSize: 24, fontWeight: '900' },
     title: { fontSize: 24, fontWeight: '800', color: c.text, textAlign: 'center', marginBottom: 4 },
     subtitle: { fontSize: 13, color: c.textMuted, textAlign: 'center', marginBottom: 24 },
-    toggleRow: {
-      flexDirection: 'row', backgroundColor: c.bgDeep,
-      borderRadius: 12, padding: 4, marginBottom: 20,
-    },
-    toggleBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center' },
-    toggleBtnActive: { backgroundColor: c.surface },
-    toggleText: { fontSize: 13, color: c.textMuted, fontWeight: '500' },
-    toggleTextActive: { color: c.primary, fontWeight: '700' },
     label: { fontSize: 13, color: c.textMuted, marginBottom: 6, fontWeight: '500' },
     inputWrap: {
       flexDirection: 'row', alignItems: 'center',
@@ -97,21 +98,12 @@ export default function RegisterScreen({ navigation }) {
         <Text style={s.title}>Create account</Text>
         <Text style={s.subtitle}>Join millions on NendPlay</Text>
 
-        {/* Auth method toggle */}
-        <View style={s.toggleRow}>
-          {[
-            { id: 'credentials', label: 'Username' },
-            { id: 'email', label: 'Email only' },
-          ].map(({ id, label }) => (
-            <TouchableOpacity
-              key={id}
-              style={[s.toggleBtn, authMethod === id && s.toggleBtnActive]}
-              onPress={() => setAuthMethod(id)}>
-              <Text style={[s.toggleText, authMethod === id && s.toggleTextActive]}>
-                {label}
-              </Text>
-            </TouchableOpacity>
-          ))}
+        <Text style={s.label}>Email Address</Text>
+        <View style={s.inputWrap}>
+          <TextInput style={s.input} placeholder="your@email.com"
+            placeholderTextColor={c.textMuted} value={form.email}
+            onChangeText={(v) => setForm({ ...form, email: v })}
+            keyboardType="email-address" autoCapitalize="none" />
         </View>
 
         <Text style={s.label}>Display Name</Text>
@@ -121,38 +113,35 @@ export default function RegisterScreen({ navigation }) {
             onChangeText={(v) => setForm({ ...form, profileName: v })} />
         </View>
 
-        {authMethod === 'email' ? (
-          <>
-            <Text style={s.label}>Email Address</Text>
-            <View style={s.inputWrap}>
-              <TextInput style={s.input} placeholder="your@email.com"
-                placeholderTextColor={c.textMuted} value={form.email}
-                onChangeText={(v) => setForm({ ...form, email: v })}
-                keyboardType="email-address" autoCapitalize="none" />
-            </View>
-          </>
-        ) : (
-          <>
-            <Text style={s.label}>Username</Text>
-            <View style={s.inputWrap}>
-              <TextInput style={s.input} placeholder="your_username"
-                placeholderTextColor={c.textMuted} value={form.username}
-                onChangeText={(v) => setForm({ ...form, username: v })}
-                autoCapitalize="none" />
-            </View>
+        <Text style={s.label}>Username</Text>
+        <View style={s.inputWrap}>
+          <TextInput style={s.input} placeholder="your_username"
+            placeholderTextColor={c.textMuted} value={form.username}
+            onChangeText={(v) => setForm({ ...form, username: v })}
+            autoCapitalize="none" />
+        </View>
 
-            <Text style={s.label}>Password</Text>
-            <View style={s.inputWrap}>
-              <TextInput style={s.input} placeholder="Min. 6 characters"
-                placeholderTextColor={c.textMuted} value={form.password}
-                onChangeText={(v) => setForm({ ...form, password: v })}
-                secureTextEntry={!showPassword} />
-              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={18} color={c.textMuted} />
-              </TouchableOpacity>
-            </View>
-          </>
-        )}
+        <Text style={s.label}>Password</Text>
+        <View style={s.inputWrap}>
+          <TextInput style={s.input} placeholder="Min. 6 characters"
+            placeholderTextColor={c.textMuted} value={form.password}
+            onChangeText={(v) => setForm({ ...form, password: v })}
+            secureTextEntry={!showPassword} />
+          <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+            <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={18} color={c.textMuted} />
+          </TouchableOpacity>
+        </View>
+
+        <Text style={s.label}>Confirm Password</Text>
+        <View style={s.inputWrap}>
+          <TextInput style={s.input} placeholder="Repeat password"
+            placeholderTextColor={c.textMuted} value={form.confirmPassword}
+            onChangeText={(v) => setForm({ ...form, confirmPassword: v })}
+            secureTextEntry={!showConfirmPassword} />
+          <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+            <Ionicons name={showConfirmPassword ? 'eye-off' : 'eye'} size={18} color={c.textMuted} />
+          </TouchableOpacity>
+        </View>
 
         <Text style={s.label}>Referral Code <Text style={{ opacity: 0.5 }}>(optional)</Text></Text>
         <View style={s.inputWrap}>
