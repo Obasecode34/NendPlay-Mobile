@@ -39,6 +39,7 @@ const CATEGORY_TILES = [
   { label: 'Chinese Cinema', terms: ['chinese cinema', 'china', 'chinese', 'mandarin'] },
   { label: 'Hong Kong Cinema', terms: ['hong kong cinema', 'hong kong', 'cantonese'] },
   { label: 'Japanese Cinema', terms: ['japanese cinema', 'japan', 'japanese'] },
+  { label: 'Australian Cinema', terms: ['australian cinema', 'australia', 'australian', 'aussie'] },
   { label: 'Philippine Cinema', terms: ['philippine cinema', 'philippines', 'philippine', 'filipino', 'tagalog'] },
   { label: 'European Cinema', terms: ['european cinema', 'europe', 'british', 'french', 'german', 'italian', 'spanish'] },
 ]
