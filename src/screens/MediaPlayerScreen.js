@@ -13,6 +13,9 @@ import useThemeStore from '../stores/themeStore'
 import useAuthStore from '../services/authStore.native'
 import { mediaService, downloadService } from '../services/index'
 import { saveDownloadFile, upsertLocalDownloadRecord } from '../services/localDownloadStore'
+import AdBanner from '../components/ads/AdBanner'
+import NativeAdvancedAd from '../components/ads/NativeAdvancedAd'
+import NendPlayAdCard from '../components/ads/NendPlayAdCard'
 
 const { width } = Dimensions.get('window')
 const PUBLIC_WEB_URL = 'https://nendplay.com'
@@ -229,6 +232,8 @@ export default function MediaPlayerScreen({ route, navigation }) {
     title: { color: c.text, fontSize: 20, fontWeight: '800', marginBottom: 4 },
     meta: { color: c.textMuted, fontSize: 13, marginBottom: 16 },
     actions: { flexDirection: 'row', gap: 10, marginBottom: 16 },
+    adStack: { marginBottom: 16 },
+    adUnit: { marginHorizontal: 0 },
     actionBtn: {
       flexDirection: 'row', alignItems: 'center', gap: 6,
       paddingHorizontal: 16, paddingVertical: 9, borderRadius: 10,
@@ -323,6 +328,14 @@ export default function MediaPlayerScreen({ route, navigation }) {
               <Text style={s.actionBtnText}>Share</Text>
             </TouchableOpacity>
           </View>
+
+          {!locked && !localUri ? (
+            <View style={s.adStack}>
+              <AdBanner style={s.adUnit} horizontalPadding={64} />
+              <NendPlayAdCard placement="media" style={s.adUnit} />
+              <NativeAdvancedAd style={s.adUnit} />
+            </View>
+          ) : null}
 
           {media?.description && (
             <Text style={s.description}>{media.description}</Text>

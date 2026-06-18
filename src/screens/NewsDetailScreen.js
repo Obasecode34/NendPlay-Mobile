@@ -8,6 +8,9 @@ import { VideoView, useVideoPlayer } from 'expo-video'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import useAuthStore from '../services/authStore.native'
 import { newsService } from '../services/index'
+import AdBanner from '../components/ads/AdBanner'
+import NativeAdvancedAd from '../components/ads/NativeAdvancedAd'
+import NendPlayAdCard from '../components/ads/NendPlayAdCard'
 
 const BLUE = '#5B5CF6'
 const TEXT = '#070707'
@@ -258,10 +261,10 @@ export default function NewsDetailScreen({ route, navigation }) {
                 <React.Fragment key={`paragraph-${index}`}>
                   <Text style={styles.paragraph}>{text}</Text>
                   {post.adsEnabled && index === 0 ? (
-                    <View style={styles.adBox}>
-                      <Text style={styles.adLabel}>Sponsored</Text>
-                      <Text style={styles.adTitle}>NendPlay ad placement</Text>
-                      <Text style={styles.adText}>Ads appear between article paragraphs when available.</Text>
+                    <View style={styles.inlineAdStack}>
+                      <AdBanner style={styles.inlineAd} horizontalPadding={48} />
+                      <NendPlayAdCard placement="news" style={styles.inlineAd} />
+                      <NativeAdvancedAd style={styles.inlineAd} />
                     </View>
                   ) : null}
                 </React.Fragment>
@@ -357,16 +360,8 @@ const styles = StyleSheet.create({
   audio: { width: '100%', height: 56, backgroundColor: '#101022', borderRadius: 12 },
   image: { width: '100%', height: 260, backgroundColor: BORDER, marginBottom: 18 },
   paragraph: { color: TEXT, fontSize: 24, lineHeight: 36, marginBottom: 22 },
-  adBox: {
-    borderWidth: 1,
-    borderColor: BORDER,
-    backgroundColor: '#FAFAFA',
-    padding: 18,
-    marginBottom: 26,
-  },
-  adLabel: { color: MUTED, fontSize: 12, alignSelf: 'flex-end', marginBottom: 8 },
-  adTitle: { color: TEXT, fontSize: 20, fontWeight: '900' },
-  adText: { color: MUTED, fontSize: 15, marginTop: 6 },
+  inlineAdStack: { marginBottom: 26 },
+  inlineAd: { marginHorizontal: 0 },
   actions: {
     flexDirection: 'row',
     justifyContent: 'space-around',

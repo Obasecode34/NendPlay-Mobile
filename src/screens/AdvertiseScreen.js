@@ -6,6 +6,7 @@ import {
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import * as ImagePicker from 'expo-image-picker'
 import useThemeStore from '../stores/themeStore'
 import { adService } from '../services/index'
 
@@ -18,6 +19,10 @@ const AD_TYPES = [
 const PLACEMENTS = [
   { value: 'home', label: 'Home' },
   { value: 'media', label: 'Media' },
+  { value: 'news', label: 'News' },
+  { value: 'downloads', label: 'Downloads' },
+  { value: 'profile', label: 'Profile' },
+  { value: 'subscription', label: 'Subscription' },
   { value: 'live_event', label: 'Live Events' },
   { value: 'shorts', label: 'Shorts' },
   { value: 'novels', label: 'NovelHub' },
@@ -39,7 +44,11 @@ export default function AdvertiseScreen({ navigation }) {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [verifying, setVerifying] = useState(false)
+  const [paymentRef, setPaymentRef] = useState('')
+  const [paymentGateway, setPaymentGateway] = useState('paystack')
   const [quote, setQuote] = useState(null)
+  const [creativeAsset, setCreativeAsset] = useState(null)
   const [form, setForm] = useState({
     advertiserName: '', title: '', description: '',
     targetUrl: '', mediaUrl: '', adType: 'banner',
@@ -70,6 +79,21 @@ export default function AdvertiseScreen({ navigation }) {
     } catch {}
   }
 
+  const pickCreative = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (!permission.granted) {
+      Alert.alert('Permission Required', 'Allow photo library access to choose an ad creative.')
+      return
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      allowsEditing: false,
+      quality: 0.9,
+    })
+    if (result.canceled || !result.assets?.[0]) return
+    setCreativeAsset(result.assets[0])
+  }
+
   const handleSubmit = async () => {
     if (!form.advertiserName || !form.title) {
       Alert.alert('Error', 'Please fill in advertiser name and title')
@@ -77,11 +101,26 @@ export default function AdvertiseScreen({ navigation }) {
     }
     setSubmitting(true)
     try {
-      const res = await adService.submit(form)
-      const { paymentUrl } = res.data.data
+      let payload = form
+      if (creativeAsset) {
+        payload = new FormData()
+        Object.entries(form).forEach(([key, value]) => payload.append(key, String(value ?? '')))
+        const rawExtension = creativeAsset.uri.split('.').pop()?.toLowerCase() || 'jpg'
+        const isVideo = creativeAsset.type === 'video' || creativeAsset.mimeType?.startsWith('video/')
+        const extension = rawExtension.split('?')[0] || (isVideo ? 'mp4' : 'jpg')
+        payload.append('creative', {
+          uri: creativeAsset.uri,
+          name: `ad-creative.${extension}`,
+          type: creativeAsset.mimeType || (isVideo ? 'video/mp4' : 'image/jpeg'),
+        })
+      }
+      const res = await adService.submit(payload)
+      const { paymentUrl, transactionRef } = res.data.data
+      setPaymentRef(transactionRef)
+      setPaymentGateway(form.gateway)
       Alert.alert(
         'Ad Submitted!',
-        'Complete payment to activate your ad.',
+        'Complete payment, then return here to verify. Paid ads go through review before serving.',
         [
           { text: 'Pay Now', onPress: () => Linking.openURL(paymentUrl) },
           { text: 'Later', style: 'cancel' },
@@ -92,6 +131,24 @@ export default function AdvertiseScreen({ navigation }) {
     } catch (err) {
       Alert.alert('Error', err.response?.data?.message || 'Submission failed')
     } finally { setSubmitting(false) }
+  }
+
+  const verifyPayment = async () => {
+    if (!paymentRef) {
+      Alert.alert('Reference Required', 'Submit an ad payment first.')
+      return
+    }
+    setVerifying(true)
+    try {
+      const res = await adService.verify({ transactionRef: paymentRef, gateway: paymentGateway })
+      Alert.alert('Payment Verified', res.data.message || 'Your ad is pending review.')
+      setPaymentRef('')
+      fetchMyAds()
+    } catch (err) {
+      Alert.alert('Verification Failed', err.response?.data?.message || 'Could not verify payment.')
+    } finally {
+      setVerifying(false)
+    }
   }
 
   const handleToggle = async (id) => {
@@ -123,6 +180,30 @@ export default function AdvertiseScreen({ navigation }) {
           <Text style={{ color: 'white', fontSize: 13, fontWeight: '700' }}>Create Ad</Text>
         </TouchableOpacity>
       </View>
+
+      {paymentRef ? (
+        <View style={{
+          margin: 16,
+          marginBottom: 0,
+          backgroundColor: c.surface,
+          borderRadius: 14,
+          borderWidth: 1,
+          borderColor: c.border,
+          padding: 14,
+        }}>
+          <Text style={{ color: c.text, fontSize: 14, fontWeight: '800' }}>Payment verification pending</Text>
+          <Text style={{ color: c.textMuted, fontSize: 12, marginTop: 4 }}>Reference: {paymentRef}</Text>
+          <TouchableOpacity
+            onPress={verifyPayment}
+            disabled={verifying}
+            style={{ marginTop: 10, backgroundColor: c.primary, padding: 11, borderRadius: 10, alignItems: 'center' }}>
+            {verifying
+              ? <ActivityIndicator color="white" size="small" />
+              : <Text style={{ color: 'white', fontWeight: '800' }}>I have paid</Text>
+            }
+          </TouchableOpacity>
+        </View>
+      ) : null}
 
       {loading ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
@@ -222,6 +303,25 @@ export default function AdvertiseScreen({ navigation }) {
                   value={form[key]}
                   onChangeText={(v) => setForm({ ...form, [key]: v })} />
               ))}
+
+              <TouchableOpacity
+                onPress={pickCreative}
+                style={{
+                  backgroundColor: c.surfaceHigh,
+                  borderRadius: 10,
+                  padding: 12,
+                  borderWidth: 1,
+                  borderColor: c.border,
+                  marginBottom: 14,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 8,
+                }}>
+                <Ionicons name="image-outline" size={18} color={c.textMuted} />
+                <Text style={{ color: c.textMuted, fontSize: 13, fontWeight: '700', flex: 1 }}>
+                  {creativeAsset ? (creativeAsset.fileName || 'Creative selected') : 'Choose image or video creative'}
+                </Text>
+              </TouchableOpacity>
 
               {/* Ad type */}
               <Text style={{ color: c.textMuted, fontSize: 12, marginBottom: 6, fontWeight: '600' }}>Ad Type</Text>

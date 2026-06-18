@@ -12,6 +12,9 @@ import useThemeStore from '../stores/themeStore'
 import useAuthStore from '../services/authStore.native'
 import { downloadService } from '../services/index'
 import { deleteLocalDownload, getLocalDownloads, getReadableUri, removeLocalDownloadRecord } from '../services/localDownloadStore'
+import AdBanner from '../components/ads/AdBanner'
+import NativeAdvancedAd from '../components/ads/NativeAdvancedAd'
+import NendPlayAdCard from '../components/ads/NendPlayAdCard'
 
 const DOWNLOAD_PAGE_LIMIT = 30
 
@@ -229,6 +232,7 @@ export default function DownloadsScreen({ embedded = false, contentType, navigat
       paddingVertical: 5, borderRadius: 8, marginTop: 6, alignSelf: 'flex-start',
     },
     playBtnText: { color: 'white', fontSize: 12, fontWeight: '700' },
+    adUnit: { marginHorizontal: 0 },
   })
 
   const renderItem = ({ item }) => {
@@ -339,6 +343,13 @@ export default function DownloadsScreen({ embedded = false, contentType, navigat
             keyExtractor={(item) => item._id}
             renderItem={renderItem}
             contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 20 }}
+            ListHeaderComponent={!embedded ? (
+              <View>
+                <AdBanner style={s.adUnit} horizontalPadding={64} />
+                <NendPlayAdCard placement="downloads" style={s.adUnit} />
+                <NativeAdvancedAd style={s.adUnit} />
+              </View>
+            ) : null}
             refreshControl={
               <RefreshControl refreshing={refreshing}
                 onRefresh={() => { setRefreshing(true); fetchAll(1, false) }}

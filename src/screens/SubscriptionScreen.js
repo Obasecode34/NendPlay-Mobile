@@ -9,6 +9,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import useThemeStore from '../stores/themeStore'
 import useAuthStore from '../services/authStore.native'
 import { subscriptionService } from '../services/index'
+import AdBanner from '../components/ads/AdBanner'
+import NativeAdvancedAd from '../components/ads/NativeAdvancedAd'
+import NendPlayAdCard from '../components/ads/NendPlayAdCard'
 
 const PLAN_COLORS = {
   mobile: '#60A5FA', basic: '#34D399', standard: '#A78BFA', premium: '#FBBF24',
@@ -90,6 +93,10 @@ export default function SubscriptionScreen({ navigation }) {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 16 }}>
+        <AdBanner style={{ marginHorizontal: 0 }} horizontalPadding={64} />
+        <NendPlayAdCard placement="subscription" style={{ marginHorizontal: 0 }} />
+        <NativeAdvancedAd style={{ marginHorizontal: 0 }} />
+
         {/* Gateway */}
         <View style={{ flexDirection: 'row', gap: 8, marginBottom: 20 }}>
           <Text style={{ color: c.textMuted, fontSize: 13, alignSelf: 'center' }}>Pay with:</Text>

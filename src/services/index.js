@@ -71,10 +71,13 @@ export const subscriptionService = {
 
 export const adService = {
   getPricing: (params) => api.get('/ads/pricing', { params }),
-  submit: (data) => api.post('/ads/submit', data),
+  submit: (data) => api.post('/ads/submit', data, data instanceof FormData
+    ? { headers: { 'Content-Type': 'multipart/form-data' } }
+    : undefined),
   verify: (data) => api.post('/ads/verify', data),
   serve: (params) => api.get('/ads/serve', { params }),
   getMyAds: (params) => api.get('/ads/my', { params }),
+  toggle: (id) => api.patch(`/ads/${id}/toggle`),
   recordImpression: (id) => api.post(`/ads/${id}/impression`),
   recordClick: (id) => api.post(`/ads/${id}/click`),
 }

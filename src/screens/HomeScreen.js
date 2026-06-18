@@ -11,6 +11,7 @@ import useThemeStore from '../stores/themeStore'
 import { mediaService, novelService } from '../services/index'
 import AdBanner from '../components/ads/AdBanner'
 import NativeAdvancedAd from '../components/ads/NativeAdvancedAd'
+import NendPlayAdCard from '../components/ads/NendPlayAdCard'
 
 const { width } = Dimensions.get('window')
 const HERO_WIDTH = width - 32
@@ -736,6 +737,7 @@ export default function HomeScreen({ navigation }) {
           )}
 
           <AdBanner style={{ marginHorizontal: 16 }} />
+          <NendPlayAdCard placement="home" />
           <NativeAdvancedAd />
           <CategoryTileRow
             categories={CATEGORY_TILES}

@@ -15,6 +15,9 @@ import { downloadService, novelService } from '../services/index'
 import { saveDownloadFile, upsertLocalDownloadRecord } from '../services/localDownloadStore'
 import DownloadsScreen from './DownloadsScreen'
 import DeviceOfficeScreen from '../features/novelDevice/DeviceOfficeScreen'
+import AdBanner from '../components/ads/AdBanner'
+import NativeAdvancedAd from '../components/ads/NativeAdvancedAd'
+import NendPlayAdCard from '../components/ads/NendPlayAdCard'
 
 const TOP_TABS = [
   { key: 'novels', label: 'NovelHub', icon: 'book-outline' },
@@ -316,6 +319,8 @@ export default function NovelHubScreen() {
     },
     headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
     title: { color: c.text, fontSize: 22, fontWeight: '900' },
+    adStack: { paddingTop: 12, backgroundColor: c.bg },
+    adUnit: { marginHorizontal: 16 },
     topTabs: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -759,6 +764,14 @@ export default function NovelHubScreen() {
           </View>
         ) : null}
       </View>
+
+      {activeTopTab === 'novels' ? (
+        <View style={s.adStack}>
+          <AdBanner style={s.adUnit} horizontalPadding={64} />
+          <NendPlayAdCard placement="novels" style={s.adUnit} />
+          <NativeAdvancedAd style={s.adUnit} />
+        </View>
+      ) : null}
 
       {activeTopTab === 'downloads' ? (
         <DownloadsScreen embedded contentType="document" />

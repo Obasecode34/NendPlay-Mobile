@@ -12,6 +12,9 @@ import useThemeStore, { } from '../stores/themeStore'
 import useAuthStore from '../services/authStore.native'
 import { authService, mediaService, notificationService, subscriptionService } from '../services/index'
 import { getAllThemes } from '../theme/themes'
+import AdBanner from '../components/ads/AdBanner'
+import NativeAdvancedAd from '../components/ads/NativeAdvancedAd'
+import NendPlayAdCard from '../components/ads/NendPlayAdCard'
 
 const PROFILE_PAGE_LIMIT = 20
 
@@ -435,6 +438,7 @@ export default function ProfileScreen({ navigation }) {
     notificationTitle: { color: c.text, fontSize: 14, fontWeight: '900', marginBottom: 4 },
     notificationBody: { color: c.textMuted, fontSize: 12, lineHeight: 17 },
     notificationDate: { color: c.textMuted, fontSize: 11, marginTop: 8 },
+    adUnit: { marginHorizontal: 16 },
   })
 
   if (!isAuthenticated) {
@@ -464,6 +468,10 @@ export default function ProfileScreen({ navigation }) {
               <Ionicons name="chevron-forward" size={16} color={c.textMuted} />
             </TouchableOpacity>
           </View>
+
+          <AdBanner style={s.adUnit} horizontalPadding={64} />
+          <NendPlayAdCard placement="profile" style={s.adUnit} />
+          <NativeAdvancedAd style={s.adUnit} />
 
           {activeTab === 'themes' && (
             <View style={[s.section, { padding: 14 }]}>
@@ -605,6 +613,10 @@ export default function ProfileScreen({ navigation }) {
           const nearBottom = nativeEvent.layoutMeasurement.height + nativeEvent.contentOffset.y >= nativeEvent.contentSize.height - 260
           if (nearBottom) loadMoreSavedMedia()
         }}>
+        <AdBanner style={s.adUnit} horizontalPadding={64} />
+        <NendPlayAdCard placement="profile" style={s.adUnit} />
+        <NativeAdvancedAd style={s.adUnit} />
+
         {activeTab === 'account' && (
           <>
             {/* Profile details */}

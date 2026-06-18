@@ -61,7 +61,6 @@
       [
         "./plugins/withGoogleMobileAds",
         {
-          // "androidAppId": "ca-app-pub-8160598841675696~4647379521",
           "androidAppId": "ca-app-pub-6883303133741538~7229887820",
           "iosAppId": "ca-app-pub-8160598841675696~1490733147"
         }
@@ -99,29 +98,20 @@
     "scheme": "nendplay",
     "extra": {
       "apiUrl": "https://api.nendplay.com/api",
+      "nendPlayHouseAdsEnabled": true,
       "adMobAdsEnabled": true,
       "adMobUseTestAds": false,
       "adMobSsvRewardsEnabled": true,
-      "adMobRewardedInterstitialEnabled": false,
+      "adMobRewardedInterstitialEnabled": true,
       "adMobSsvRewardsNote": "Set adMobSsvRewardsEnabled to true only after enabling SSV in AdMob for the real rewarded ad unit.",
-      // "adMobAndroidBannerId": "ca-app-pub-8160598841675696/3026872170",
-      // "adMobIosBannerId": "ca-app-pub-8160598841675696/7617157791",
-      // "adMobAndroidRewardedId": "ca-app-pub-8160598841675696/8463335603",
-      // "adMobIosRewardedId": "ca-app-pub-8160598841675696/2687960828",
-      // "adMobAndroidRewardedInterstitialId": "ca-app-pub-8160598841675696/4913615597",
-      // "adMobIosRewardedInterstitialId": "ca-app-pub-8160598841675696/9782798898",
-      // "adMobAndroidNativeId": "ca-app-pub-8160598841675696/2296548353",
-      // "adMobIosNativeId": "ca-app-pub-8160598841675696/8215923596",
-      // "adMobAndroidAppOpenId": "ca-app-pub-8160598841675696/6279721476",
-      // "adMobIosAppOpenId": "ca-app-pub-8160598841675696/5338174896",
       "adMobAndroidBannerId": "ca-app-pub-6883303133741538/9786154005",
       "adMobAndroidRewardedId": "ca-app-pub-6883303133741538/7086256866",
       "adMobAndroidRewardedInterstitialId": "ca-app-pub-6883303133741538/2464485570",
       "adMobAndroidNativeId": "ca-app-pub-6883303133741538/4230574995",
       "adMobAndroidAppOpenId": "ca-app-pub-6883303133741538/1476419142",
-      "googleWebClientId": "",
-      "googleAndroidClientId": "",
-      "googleIosClientId": "",
+      "googleWebClientId": "728087185936-vd5rp69o0hj7cnogiggi6jl5hqo2q71a.apps.googleusercontent.com",
+      "googleAndroidClientId": "728087185936-0b6s4tnfmtn7bmocn0sqhnr7v88n7u1d.apps.googleusercontent.com",
+      "googleIosClientId": "728087185936-esfcb4afadpok17vrqs86b60ih9p2ut7.apps.googleusercontent.com",
       "eas": {
         "projectId": "5c9a249b-babd-4f64-87d2-074c7fef169e"
       }

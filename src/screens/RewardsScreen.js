@@ -16,6 +16,9 @@ import useThemeStore from '../stores/themeStore'
 import useAuthStore from '../services/authStore.native'
 import { rewardService } from '../services/index'
 import RewardedAdButton from '../components/ads/RewardedAdButton'
+import AdBanner from '../components/ads/AdBanner'
+import NativeAdvancedAd from '../components/ads/NativeAdvancedAd'
+import NendPlayAdCard from '../components/ads/NendPlayAdCard'
 
 const GOLD = '#F5C542'
 const GOLD_DARK = '#7A5A00'
@@ -319,6 +322,12 @@ export default function RewardsScreen({ navigation }) {
             </Text>
           </View>
 
+          <View style={styles.adStack}>
+            <AdBanner style={styles.adUnit} horizontalPadding={64} />
+            <NendPlayAdCard placement="subscription" style={styles.adUnit} />
+            <NativeAdvancedAd style={styles.adUnit} />
+          </View>
+
           <View style={styles.paidPanel}>
             <Text style={styles.paidTitle}>Buy ad-free days</Text>
             <Text style={styles.paidCopy}>
@@ -529,6 +538,8 @@ const styles = StyleSheet.create({
     gap: 9,
   },
   policyNoticeText: { color: '#D9D0AF', flex: 1, fontSize: 12, lineHeight: 17 },
+  adStack: { marginHorizontal: 18, marginBottom: 18 },
+  adUnit: { marginHorizontal: 0 },
   paidPanel: {
     marginHorizontal: 18,
     marginBottom: 22,

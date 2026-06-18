@@ -11,6 +11,7 @@ export default function NativeAdvancedAd({ style }) {
   const { user } = useAuthStore()
   const c = theme.colors
   const [nativeAd, setNativeAd] = useState(null)
+  const [failed, setFailed] = useState(false)
   const ads = getMobileAdsModule()
   const NativeAd = ads?.NativeAd
   const NativeAdView = ads?.NativeAdView
@@ -23,24 +24,37 @@ export default function NativeAdvancedAd({ style }) {
 
     let mounted = true
     let loadedAd = null
+    setFailed(false)
+    const timeout = setTimeout(() => {
+      if (mounted && !loadedAd) setFailed(true)
+    }, 8000)
     try {
       NativeAd.createForAdRequest(getAdUnit('Native'), {
         requestNonPersonalizedAdsOnly: true,
       })
         .then((ad) => {
           loadedAd = ad
+          clearTimeout(timeout)
           if (mounted) setNativeAd(ad)
         })
-        .catch(() => {})
-    } catch {}
+        .catch(() => {
+          clearTimeout(timeout)
+          if (mounted) setFailed(true)
+        })
+    } catch {
+      clearTimeout(timeout)
+      if (mounted) setFailed(true)
+    }
 
     return () => {
       mounted = false
+      clearTimeout(timeout)
       loadedAd?.destroy?.()
     }
   }, [NativeAd])
 
   if (hasAdFreeAccess(user) || !areAdsEnabled() || !NativeAdView || !NativeAsset || !NativeAssetType || !NativeMediaView) return null
+  if (failed) return null
 
   if (!nativeAd) {
     return (
