@@ -8,7 +8,8 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.nendplay.com/api"
+        "EXPO_PUBLIC_API_URL": "https://api.nendplay.com/api",
+        "EXPO_PUBLIC_ADMOB_USE_TEST_ADS": "true"
       },
       "android": {
         "buildType": "apk"
@@ -17,7 +18,8 @@
     "preview": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.nendplay.com/api"
+        "EXPO_PUBLIC_API_URL": "https://api.nendplay.com/api",
+        "EXPO_PUBLIC_ADMOB_USE_TEST_ADS": "true"
       },
       "android": {
         "buildType": "apk"

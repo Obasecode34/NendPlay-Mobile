@@ -25,8 +25,10 @@ export default function RewardedAdButton({
     if (useRewardedInterstitial && !areRewardedInterstitialsEnabled()) return null
     const AdClass = useRewardedInterstitial ? ads?.RewardedInterstitialAd : ads?.RewardedAd
     if (!AdClass) return null
+    const unitId = getAdUnit(useRewardedInterstitial ? 'RewardedInterstitial' : 'Rewarded')
+    if (!unitId) return null
     try {
-      return AdClass.createForAdRequest(getAdUnit(useRewardedInterstitial ? 'RewardedInterstitial' : 'Rewarded'), {
+      return AdClass.createForAdRequest(unitId, {
         requestNonPersonalizedAdsOnly: true,
         serverSideVerificationOptions: userId ? {
           userId: String(userId),

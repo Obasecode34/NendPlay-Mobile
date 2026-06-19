@@ -1,5 +1,5 @@
 // src/screens/ShortsScreen.js
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator, Alert, Dimensions, FlatList, Image,
   Pressable, Share, StyleSheet, Text, TextInput, TouchableOpacity, View,
@@ -12,6 +12,9 @@ import useThemeStore from '../stores/themeStore'
 import useAuthStore from '../services/authStore.native'
 import { downloadService, mediaService } from '../services/index'
 import { saveDownloadFile, upsertLocalDownloadRecord } from '../services/localDownloadStore'
+import AdBanner from '../components/ads/AdBanner'
+import NativeAdvancedAd from '../components/ads/NativeAdvancedAd'
+import NendPlayAdCard from '../components/ads/NendPlayAdCard'
 
 const { width, height } = Dimensions.get('window')
 const ACTION_RAIL_BOTTOM = 64
@@ -53,6 +56,16 @@ function TopicPill({ icon, label, onPress }) {
       <Ionicons name={icon} size={20} color="#FFFFFF" />
       <Text style={styles.topicText}>{label}</Text>
     </TouchableOpacity>
+  )
+}
+
+function ShortsAdItem({ itemHeight }) {
+  return (
+    <View style={[styles.shortPage, { height: itemHeight, justifyContent: 'center', paddingVertical: 24 }]}>
+      <NendPlayAdCard placement="shorts" style={{ marginHorizontal: 16 }} />
+      <AdBanner style={{ marginHorizontal: 16 }} />
+      <NativeAdvancedAd style={{ marginHorizontal: 16 }} />
+    </View>
   )
 }
 
@@ -456,6 +469,16 @@ export default function ShortsScreen({ route }) {
   }, [openId, shorts, loading])
 
   const viewabilityConfig = { itemVisiblePercentThreshold: 70 }
+  const feedItems = useMemo(() => {
+    const items = []
+    shorts.forEach((short, index) => {
+      if (index > 0 && index % 5 === 0) {
+        items.push({ _id: `shorts-ad-${index}`, isAd: true })
+      }
+      items.push(short)
+    })
+    return items
+  }, [shorts])
 
   const switchFeedMode = (nextMode) => {
     if (nextMode === feedMode) return
@@ -518,16 +541,20 @@ export default function ShortsScreen({ route }) {
 
       <FlatList
         ref={listRef}
-        data={shorts}
+        data={feedItems}
         keyExtractor={(item) => item._id}
         renderItem={({ item, index }) => (
-          <ShortItem
-            item={item}
-            isActive={index === activeIndex}
-            theme={theme}
-            itemHeight={itemHeight}
-            onPausedChange={setActivePaused}
-          />
+          item.isAd ? (
+            <ShortsAdItem itemHeight={itemHeight} />
+          ) : (
+            <ShortItem
+              item={item}
+              isActive={index === activeIndex}
+              theme={theme}
+              itemHeight={itemHeight}
+              onPausedChange={setActivePaused}
+            />
+          )
         )}
         pagingEnabled
         snapToInterval={itemHeight}

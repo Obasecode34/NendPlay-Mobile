@@ -2,7 +2,14 @@ import { Platform } from 'react-native'
 import Constants from 'expo-constants'
 import { getMobileAdsModule } from './mobileAds'
 
-const extra = Constants.expoConfig?.extra || {}
+const getExpoExtra = () => (
+  Constants.expoConfig?.extra ||
+  Constants.manifest?.extra ||
+  Constants.manifest2?.extra?.expoClient?.extra ||
+  {}
+)
+
+const extra = getExpoExtra()
 const fallbackTestIds = {
   Banner: 'ca-app-pub-3940256099942544/6300978111',
   Rewarded: 'ca-app-pub-3940256099942544/5224354917',
@@ -24,7 +31,11 @@ const testIdKeys = {
 }
 
 export function shouldUseTestAds() {
-  return Boolean(__DEV__ || extra.adMobUseTestAds)
+  return Boolean(
+    __DEV__ ||
+    extra.adMobUseTestAds ||
+    process.env.EXPO_PUBLIC_ADMOB_USE_TEST_ADS === 'true'
+  )
 }
 
 export function areAdsEnabled() {
@@ -51,5 +62,5 @@ export function getAdUnit(kind) {
 
   if (shouldUseTestAds()) return fallback
 
-  return (key && extra[key]) || fallback
+  return (key && extra[key]) || null
 }

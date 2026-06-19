@@ -13,8 +13,10 @@ export default function useAppOpenAd(enabled = true) {
   const ads = getMobileAdsModule()
   const appOpenAd = useMemo(() => {
     if (hasAdFreeAccess(user) || !areAdsEnabled() || !ads?.AppOpenAd) return null
+    const unitId = getAdUnit('AppOpen')
+    if (!unitId) return null
     try {
-      return ads.AppOpenAd.createForAdRequest(getAdUnit('AppOpen'), {
+      return ads.AppOpenAd.createForAdRequest(unitId, {
         requestNonPersonalizedAdsOnly: true,
       })
     } catch {

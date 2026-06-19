@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Image, Linking, Text, TouchableOpacity, View } from 'react-native'
+import { VideoView, useVideoPlayer } from 'expo-video'
 import Constants from 'expo-constants'
 import useAuthStore from '../../services/authStore.native'
 import { adService } from '../../services'
@@ -17,6 +18,35 @@ const withTimeout = (promise, ms = 5000) => Promise.race([
   promise,
   new Promise((_, reject) => setTimeout(() => reject(new Error('ad request timed out')), ms)),
 ])
+
+function AdVideoCreative({ uri, backgroundColor }) {
+  const player = useVideoPlayer({ uri }, (player) => {
+    player.loop = true
+    player.muted = true
+  })
+
+  useEffect(() => {
+    player.play()
+    return () => player.pause()
+  }, [player])
+
+  return (
+    <VideoView
+      player={player}
+      nativeControls={false}
+      contentFit="cover"
+      style={{ width: '100%', height: 150, backgroundColor }}
+    />
+  )
+}
+
+function AdCreative({ ad, backgroundColor }) {
+  const isVideo = ad?.adType === 'video' || /\.(mp4|webm|mov|m3u8)(\?|$)/i.test(ad?.mediaUrl || '')
+
+  if (!ad?.mediaUrl) return null
+  if (isVideo) return <AdVideoCreative uri={ad.mediaUrl} backgroundColor={backgroundColor} />
+  return <Image source={{ uri: ad.mediaUrl }} style={{ width: '100%', height: 150, backgroundColor }} resizeMode="cover" />
+}
 
 export default function NendPlayAdCard({ placement = 'home', style }) {
   const { user } = useAuthStore()
@@ -49,8 +79,10 @@ export default function NendPlayAdCard({ placement = 'home', style }) {
     }
 
     loadAd()
+    const interval = setInterval(loadAd, 30000)
     return () => {
       cancelled = true
+      clearInterval(interval)
     }
   }, [placement, user?.adFreeUntil, user?.isSubscriptionActive, user?.subscriptionExpiry, user?.subscriptionPlan])
 
@@ -122,9 +154,7 @@ export default function NendPlayAdCard({ placement = 'home', style }) {
         borderColor: c.border,
       }, style]}
     >
-      {ad.mediaUrl ? (
-        <Image source={{ uri: ad.mediaUrl }} style={{ width: '100%', height: 150, backgroundColor: c.surfaceHigh }} resizeMode="cover" />
-      ) : null}
+      <AdCreative ad={ad} backgroundColor={c.surfaceHigh} />
       <View style={{ padding: 14 }}>
         <Text style={{
           alignSelf: 'flex-start',

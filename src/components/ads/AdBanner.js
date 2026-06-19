@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { View, useWindowDimensions } from 'react-native'
 import { areAdsEnabled, getAdUnit } from './adUnits'
 import { getMobileAdsModule } from './mobileAds'
@@ -13,12 +13,24 @@ export default function AdBanner({ style, horizontalPadding = 32, onLoaded, onFa
   const ads = getMobileAdsModule()
   const BannerAd = ads?.BannerAd
   const BannerAdSize = ads?.BannerAdSize
+  const unitId = getAdUnit('Banner')
+  const [reloadKey, setReloadKey] = useState(0)
   const bannerWidth = useMemo(
     () => Math.max(280, Math.floor(width - horizontalPadding)),
     [horizontalPadding, width]
   )
 
-  if (hasAdFreeAccess(user) || !areAdsEnabled() || !BannerAd || !BannerAdSize || failed) return null
+  useEffect(() => {
+    if (!failed) return undefined
+    const timer = setTimeout(() => {
+      setFailed(false)
+      setLoaded(false)
+      setReloadKey((key) => key + 1)
+    }, 30000)
+    return () => clearTimeout(timer)
+  }, [failed])
+
+  if (hasAdFreeAccess(user) || !areAdsEnabled() || !BannerAd || !BannerAdSize || !unitId) return null
 
   return (
     <View style={[{
@@ -29,7 +41,8 @@ export default function AdBanner({ style, horizontalPadding = 32, onLoaded, onFa
       opacity: loaded ? 1 : 0,
     }, style]}>
       <BannerAd
-        unitId={getAdUnit('Banner')}
+        key={`${unitId}-${reloadKey}`}
+        unitId={unitId}
         size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
         width={bannerWidth}
         requestOptions={{ requestNonPersonalizedAdsOnly: true }}

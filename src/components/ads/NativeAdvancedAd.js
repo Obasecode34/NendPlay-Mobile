@@ -18,9 +18,10 @@ export default function NativeAdvancedAd({ style }) {
   const NativeAsset = ads?.NativeAsset
   const NativeAssetType = ads?.NativeAssetType
   const NativeMediaView = ads?.NativeMediaView
+  const unitId = getAdUnit('Native')
 
   useEffect(() => {
-    if (hasAdFreeAccess(user) || !areAdsEnabled() || !NativeAd) return undefined
+    if (hasAdFreeAccess(user) || !areAdsEnabled() || !NativeAd || !unitId) return undefined
 
     let mounted = true
     let loadedAd = null
@@ -29,7 +30,7 @@ export default function NativeAdvancedAd({ style }) {
       if (mounted && !loadedAd) setFailed(true)
     }, 8000)
     try {
-      NativeAd.createForAdRequest(getAdUnit('Native'), {
+      NativeAd.createForAdRequest(unitId, {
         requestNonPersonalizedAdsOnly: true,
       })
         .then((ad) => {
@@ -51,9 +52,9 @@ export default function NativeAdvancedAd({ style }) {
       clearTimeout(timeout)
       loadedAd?.destroy?.()
     }
-  }, [NativeAd])
+  }, [NativeAd, unitId])
 
-  if (hasAdFreeAccess(user) || !areAdsEnabled() || !NativeAdView || !NativeAsset || !NativeAssetType || !NativeMediaView) return null
+  if (hasAdFreeAccess(user) || !areAdsEnabled() || !unitId || !NativeAdView || !NativeAsset || !NativeAssetType || !NativeMediaView) return null
   if (failed) return null
 
   if (!nativeAd) {
