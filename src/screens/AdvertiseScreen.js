@@ -10,6 +10,8 @@ import * as ImagePicker from 'expo-image-picker'
 import useThemeStore from '../stores/themeStore'
 import { adService } from '../services/index'
 
+const AD_PAYMENT_CALLBACK_URL = 'nendplay://advertise'
+
 const AD_TYPES = [
   { value: 'banner', label: 'Banner' },
   { value: 'video', label: 'Video' },
@@ -55,7 +57,22 @@ export default function AdvertiseScreen({ navigation }) {
     placement: 'home', durationDays: 7, gateway: 'paystack',
   })
 
-  useEffect(() => { fetchMyAds() }, [])
+  useEffect(() => {
+    fetchMyAds()
+
+    const handlePaymentUrl = (url) => {
+      if (!url || !url.startsWith(AD_PAYMENT_CALLBACK_URL)) return
+      const query = url.includes('?') ? url.slice(url.indexOf('?') + 1) : ''
+      const params = new URLSearchParams(query)
+      const ref = params.get('ref')
+      const gateway = params.get('gateway')
+      if (ref && gateway) verifyPayment(ref, gateway, true)
+    }
+
+    Linking.getInitialURL().then(handlePaymentUrl).catch(() => {})
+    const subscription = Linking.addEventListener('url', ({ url }) => handlePaymentUrl(url))
+    return () => subscription.remove()
+  }, [])
 
   useEffect(() => {
     if (form.adType && form.placement && form.durationDays) fetchQuote()
@@ -105,6 +122,7 @@ export default function AdvertiseScreen({ navigation }) {
       if (creativeAsset) {
         payload = new FormData()
         Object.entries(form).forEach(([key, value]) => payload.append(key, String(value ?? '')))
+        payload.append('callbackUrl', AD_PAYMENT_CALLBACK_URL)
         const rawExtension = creativeAsset.uri.split('.').pop()?.toLowerCase() || 'jpg'
         const isVideo = creativeAsset.type === 'video' || creativeAsset.mimeType?.startsWith('video/')
         const extension = rawExtension.split('?')[0] || (isVideo ? 'mp4' : 'jpg')
@@ -113,6 +131,8 @@ export default function AdvertiseScreen({ navigation }) {
           name: `ad-creative.${extension}`,
           type: creativeAsset.mimeType || (isVideo ? 'video/mp4' : 'image/jpeg'),
         })
+      } else {
+        payload = { ...form, callbackUrl: AD_PAYMENT_CALLBACK_URL }
       }
       const res = await adService.submit(payload)
       const { paymentUrl, transactionRef } = res.data.data
@@ -133,19 +153,20 @@ export default function AdvertiseScreen({ navigation }) {
     } finally { setSubmitting(false) }
   }
 
-  const verifyPayment = async () => {
-    if (!paymentRef) {
+  const verifyPayment = async (ref = paymentRef, gateway = paymentGateway, silent = false) => {
+    if (!ref) {
       Alert.alert('Reference Required', 'Submit an ad payment first.')
       return
     }
     setVerifying(true)
     try {
-      const res = await adService.verify({ transactionRef: paymentRef, gateway: paymentGateway })
-      Alert.alert('Payment Verified', res.data.message || 'Your ad is pending review.')
+      const res = await adService.verify({ transactionRef: ref, gateway })
+      if (!silent) Alert.alert('Payment Verified', res.data.message || 'Your ad is pending review.')
+      else Alert.alert('Payment Verified', 'Your ad is pending admin review.')
       setPaymentRef('')
       fetchMyAds()
     } catch (err) {
-      Alert.alert('Verification Failed', err.response?.data?.message || 'Could not verify payment.')
+      if (!silent) Alert.alert('Verification Failed', err.response?.data?.message || 'Could not verify payment.')
     } finally {
       setVerifying(false)
     }
