@@ -59,7 +59,13 @@ function TopicPill({ icon, label, onPress }) {
   )
 }
 
-function ShortsAdItem({ itemHeight }) {
+function ShortsAdItem({ itemHeight, isActive, onEnded }) {
+  useEffect(() => {
+    if (!isActive) return undefined
+    const timer = setTimeout(() => onEnded?.(), 15000)
+    return () => clearTimeout(timer)
+  }, [isActive, onEnded])
+
   return (
     <View style={[styles.shortPage, { height: itemHeight, justifyContent: 'center', paddingVertical: 24 }]}>
       <NendPlayAdCard placement="shorts" style={{ marginHorizontal: 16 }} />
@@ -69,7 +75,7 @@ function ShortsAdItem({ itemHeight }) {
   )
 }
 
-function ShortItem({ item, isActive, theme, itemHeight, onPausedChange }) {
+function ShortItem({ item, isActive, theme, itemHeight, onPausedChange, onEnded }) {
   const c = theme.colors
   const creator = getCreator(item)
   const creatorId = item.uploadedBy?._id || item.uploadedBy?.id
@@ -90,7 +96,7 @@ function ShortItem({ item, isActive, theme, itemHeight, onPausedChange }) {
   const [progress, setProgress] = useState(0)
 
   const player = useVideoPlayer({ uri: mediaService.getStreamUrl(item._id) }, (player) => {
-    player.loop = true
+    player.loop = false
   })
 
   useEffect(() => {
@@ -121,11 +127,19 @@ function ShortItem({ item, isActive, theme, itemHeight, onPausedChange }) {
   }, [isActive, isPaused, player])
 
   useEffect(() => {
+    const subscription = player.addListener?.('playToEnd', () => {
+      if (isActive) onEnded?.()
+    })
+    return () => subscription?.remove?.()
+  }, [isActive, onEnded, player])
+
+  useEffect(() => {
     if (isActive) {
+      player.currentTime = 0
       setIsPaused(false)
       setShowCommentBox(false)
     }
-  }, [isActive])
+  }, [isActive, player])
 
   useEffect(() => {
     if (isActive) {
@@ -409,6 +423,7 @@ export default function ShortsScreen({ route }) {
   const insets = useSafeAreaInsets()
   const c = theme.colors
   const listRef = useRef(null)
+  const fetchingRef = useRef(false)
   const openId = route?.params?.openId
 
   const [shorts, setShorts] = useState([])
@@ -425,6 +440,8 @@ export default function ShortsScreen({ route }) {
   useEffect(() => { fetchShorts() }, [page, feedMode])
 
   const fetchShorts = async () => {
+    if (fetchingRef.current) return
+    fetchingRef.current = true
     try {
       const serviceCall = feedMode === 'subscriptions'
         ? mediaService.getSubscribedShorts
@@ -433,7 +450,10 @@ export default function ShortsScreen({ route }) {
       const { media, pagination } = res.data.data
       setShorts(prev => page === 1 ? media : [...prev, ...media])
       setHasMore(page < pagination.pages)
-    } catch {} finally { setLoading(false) }
+    } catch {} finally {
+      setLoading(false)
+      fetchingRef.current = false
+    }
   }
 
   const onViewableItemsChanged = useCallback(({ viewableItems }) => {
@@ -491,6 +511,18 @@ export default function ShortsScreen({ route }) {
     setLoading(true)
   }
 
+  const advanceToNext = useCallback((currentIndex) => {
+    if (feedItems.length === 0) return
+    const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % feedItems.length : 0
+    setActiveIndex(nextIndex)
+    requestAnimationFrame(() => {
+      listRef.current?.scrollToIndex({ index: nextIndex, animated: true })
+    })
+    if (hasMore && nextIndex >= feedItems.length - 2) {
+      setPage((prev) => prev + 1)
+    }
+  }, [feedItems.length, hasMore])
+
   if (loading) {
     return (
       <View style={{ flex: 1, backgroundColor: c.bg, alignItems: 'center', justifyContent: 'center' }}>
@@ -545,7 +577,11 @@ export default function ShortsScreen({ route }) {
         keyExtractor={(item) => item._id}
         renderItem={({ item, index }) => (
           item.isAd ? (
-            <ShortsAdItem itemHeight={itemHeight} />
+            <ShortsAdItem
+              itemHeight={itemHeight}
+              isActive={index === activeIndex}
+              onEnded={() => advanceToNext(index)}
+            />
           ) : (
             <ShortItem
               item={item}
@@ -553,6 +589,7 @@ export default function ShortsScreen({ route }) {
               theme={theme}
               itemHeight={itemHeight}
               onPausedChange={setActivePaused}
+              onEnded={() => advanceToNext(index)}
             />
           )
         )}
@@ -566,7 +603,7 @@ export default function ShortsScreen({ route }) {
         getItemLayout={(_, index) => ({
           length: itemHeight, offset: itemHeight * index, index,
         })}
-        onEndReached={() => { if (hasMore) setPage(p => p + 1) }}
+        onEndReached={() => { if (hasMore && !fetchingRef.current) setPage(p => p + 1) }}
         onEndReachedThreshold={0.5}
       />
     </View>
