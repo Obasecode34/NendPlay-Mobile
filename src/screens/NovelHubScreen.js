@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
   TextInput, ActivityIndicator, Alert, Modal,
-  ScrollView, RefreshControl, Share,
+  ScrollView, RefreshControl, Share, Image,
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -56,6 +56,20 @@ const LICENSE_TYPES = [
   { key: 'permission_granted', label: 'Permission granted' },
 ]
 
+const LANGUAGE_OPTIONS = [
+  'English', 'French', 'Spanish', 'Portuguese', 'Arabic', 'Chinese',
+  'Japanese', 'Korean', 'Hindi', 'Yoruba', 'Igbo', 'Hausa',
+]
+
+const NOVEL_CATEGORY_CARDS = [
+  { key: 'novels', label: 'Novels', subtitle: 'Public PDFs and stories', icon: 'book-outline', genre: 'fiction' },
+  { key: 'documents', label: 'Documents', subtitle: 'Reports and papers', icon: 'document-text-outline', genre: 'non-fiction' },
+  { key: 'business', label: 'Business & Finance', subtitle: 'Money and enterprise', icon: 'briefcase-outline', genre: 'business' },
+  { key: 'romance', label: 'Romance Collection', subtitle: 'Love stories', icon: 'heart-outline', genre: 'love' },
+  { key: 'fantasy', label: 'Fantasy', subtitle: 'Eastern and western fantasy', icon: 'sparkles-outline', genre: 'western-fantasy' },
+  { key: 'shorts', label: 'Short Reads', subtitle: 'Quick PDFs', icon: 'flash-outline', genre: 'teen' },
+]
+
 const CATALOG_LIMIT = 60
 
 function normalizeGenre(value = '') {
@@ -104,6 +118,7 @@ export default function NovelHubScreen() {
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(false)
   const [activeGenre, setActiveGenre] = useState('all')
+  const [activeLanguage, setActiveLanguage] = useState('all')
   const [search, setSearch] = useState('')
   const [selectedPdf, setSelectedPdf] = useState(null)
   const [downloadingPdf, setDownloadingPdf] = useState(false)
@@ -111,17 +126,19 @@ export default function NovelHubScreen() {
   const [uploading, setUploading] = useState(false)
   const [uploadForm, setUploadForm] = useState({
     title: '', author: '', description: '', category: 'fiction', file: null,
+    language: 'English', rightsConfirmed: false, contentOrigin: 'publisher_submission',
     licenseType: 'unknown', sourceName: '', sourceUrl: '', licenseUrl: '',
     attributionText: '', rightsSummary: '', requiresAttribution: false,
   })
 
   useEffect(() => { fetchDocuments() }, [])
 
-  const fetchDocuments = async (query = '', pageToLoad = 1, append = false, genre = activeGenre) => {
+  const fetchDocuments = async (query = '', pageToLoad = 1, append = false, genre = activeGenre, language = activeLanguage) => {
     try {
       const params = { limit: CATALOG_LIMIT, page: pageToLoad, fileType: 'pdf' }
       if (query) params.search = query
       if (genre && genre !== 'all') params.category = genre
+      if (language !== 'all') params.language = language
       const res = await novelService.getAll(params)
       const next = res.data.data.documents || []
       const pagination = res.data.data.pagination || {}
@@ -137,7 +154,7 @@ export default function NovelHubScreen() {
 
   const loadMoreDocuments = () => {
     if (loading || !hasMore) return
-    fetchDocuments(search, page + 1, true)
+    fetchDocuments(search, page + 1, true, activeGenre, activeLanguage)
   }
 
   const handlePickFile = async () => {
@@ -157,6 +174,14 @@ export default function NovelHubScreen() {
       Alert.alert('Error', 'Please provide a title and PDF file')
       return
     }
+    if (!uploadForm.rightsConfirmed) {
+      Alert.alert('Rights confirmation required', 'Confirm that you own this PDF or have permission to publish it on NendPlay.')
+      return
+    }
+    if (['public_domain', 'cc0', 'cc_by', 'cc_by_sa', 'cc_by_nc'].includes(uploadForm.licenseType) && !uploadForm.sourceUrl) {
+      Alert.alert('Source required', 'Public-domain and Creative Commons PDFs need a source URL for verification.')
+      return
+    }
     setUploading(true)
     try {
       const formData = new FormData()
@@ -170,6 +195,9 @@ export default function NovelHubScreen() {
       formData.append('description', uploadForm.description)
       formData.append('category', uploadForm.category)
       formData.append('genre', uploadForm.category)
+      formData.append('language', uploadForm.language)
+      formData.append('contentOrigin', uploadForm.contentOrigin)
+      formData.append('rightsConfirmed', uploadForm.rightsConfirmed.toString())
       formData.append('licenseType', uploadForm.licenseType)
       formData.append('sourceName', uploadForm.sourceName)
       formData.append('sourceUrl', uploadForm.sourceUrl)
@@ -178,10 +206,11 @@ export default function NovelHubScreen() {
       formData.append('rightsSummary', uploadForm.rightsSummary)
       formData.append('requiresAttribution', uploadForm.requiresAttribution.toString())
       await novelService.upload(formData)
-      Alert.alert('Success', 'PDF uploaded to NovelHub.')
+      Alert.alert('Submitted for review', 'PDF uploaded. It will appear in NovelHub after admin approval.')
       setShowUpload(false)
       setUploadForm({
         title: '', author: '', description: '', category: 'fiction', file: null,
+        language: 'English', rightsConfirmed: false, contentOrigin: 'publisher_submission',
         licenseType: 'unknown', sourceName: '', sourceUrl: '', licenseUrl: '',
         attributionText: '', rightsSummary: '', requiresAttribution: false,
       })
@@ -404,7 +433,13 @@ export default function NovelHubScreen() {
   const selectGenre = (genre) => {
     setActiveGenre(genre)
     setLoading(true)
-    fetchDocuments(search, 1, false, genre)
+    fetchDocuments(search, 1, false, genre, activeLanguage)
+  }
+
+  const selectLanguage = (language) => {
+    setActiveLanguage(language)
+    setLoading(true)
+    fetchDocuments(search, 1, false, activeGenre, language)
   }
 
   const renderTopTabs = () => (
@@ -429,13 +464,20 @@ export default function NovelHubScreen() {
   const renderCover = (item, size = 132) => {
     const [from, to] = getCoverColors(item)
     const genre = genreMap[getDocumentGenre(item)] || PDF_GENRES[4]
+    const coverUrl = item.thumbnailUrl || item.coverImage || ''
     return (
       <TouchableOpacity onPress={() => openReader(item)} style={{ width: size }}>
         <View style={[s.cover, { width: size, height: size * 1.42, backgroundColor: from }]}>
-          <View style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: to, opacity: 0.34 }} />
-          <Ionicons name="document-text" size={26} color="rgba(255,255,255,0.78)" />
-          <Text style={s.coverTitle} numberOfLines={4}>{item.title}</Text>
-          <View style={s.genreBadge}>
+          {coverUrl ? (
+            <Image source={{ uri: coverUrl }} style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, width: '100%', height: '100%' }} resizeMode="cover" />
+          ) : (
+            <>
+              <View style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: to, opacity: 0.34 }} />
+              <Ionicons name="document-text" size={26} color="rgba(255,255,255,0.78)" />
+              <Text style={s.coverTitle} numberOfLines={4}>{item.title}</Text>
+            </>
+          )}
+          <View style={[s.genreBadge, coverUrl ? { position: 'absolute', left: 8, bottom: 8, backgroundColor: 'rgba(0,0,0,0.62)' } : null]}>
             <Text style={s.genreBadgeText}>{genre.label}</Text>
           </View>
         </View>
@@ -553,6 +595,72 @@ export default function NovelHubScreen() {
     </View>
   )
 
+  const CategoryCards = () => (
+    <View style={s.section}>
+      <SectionHeader title="Categories" onPress={() => selectGenre('all')} />
+      <FlatList
+        horizontal
+        data={NOVEL_CATEGORY_CARDS}
+        keyExtractor={(item) => item.key}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
+        renderItem={({ item }) => (
+          <TouchableOpacity
+            onPress={() => selectGenre(item.genre)}
+            style={{
+              width: 190,
+              borderRadius: 16,
+              padding: 14,
+              minHeight: 92,
+              backgroundColor: activeGenre === item.genre ? c.primary : c.surface,
+              borderWidth: 1,
+              borderColor: activeGenre === item.genre ? c.primary : c.border,
+            }}>
+            <Ionicons name={item.icon} size={24} color={activeGenre === item.genre ? '#FFFFFF' : c.primary} />
+            <Text style={{ color: activeGenre === item.genre ? '#FFFFFF' : c.text, fontSize: 15, fontWeight: '900', marginTop: 10 }}>
+              {item.label}
+            </Text>
+            <Text style={{ color: activeGenre === item.genre ? 'rgba(255,255,255,0.76)' : c.textMuted, fontSize: 12, marginTop: 4 }} numberOfLines={1}>
+              {item.subtitle}
+            </Text>
+          </TouchableOpacity>
+        )}
+      />
+    </View>
+  )
+
+  const LanguageChips = () => (
+    <View style={s.section}>
+      <SectionHeader title="Languages" onPress={() => selectLanguage('all')} />
+      <FlatList
+        horizontal
+        data={['all', ...LANGUAGE_OPTIONS]}
+        keyExtractor={(item) => item}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 16, gap: 9 }}
+        renderItem={({ item }) => {
+          const active = activeLanguage === item
+          return (
+            <TouchableOpacity
+              onPress={() => selectLanguage(item)}
+              style={{
+                borderRadius: 18,
+                paddingHorizontal: 14,
+                paddingVertical: 9,
+                backgroundColor: active ? c.primary : c.surface,
+                borderWidth: 1,
+                borderColor: active ? c.primary : c.border,
+              }}>
+              <Text style={{ color: active ? '#FFFFFF' : c.text, fontWeight: '900', fontSize: 12 }}>
+                {item === 'all' ? 'All Languages' : item}
+              </Text>
+            </TouchableOpacity>
+          )
+        }}
+      />
+    </View>
+  )
+
   const FeaturedList = () => {
     const items = rankedDocuments.slice(6, 16)
     if (!items.length) return null
@@ -606,7 +714,7 @@ export default function NovelHubScreen() {
                     {selectedPdf.title}
                   </Text>
                   <Text style={{ color: c.textMuted, fontSize: 12, marginTop: 5 }}>
-                    {genre.label} | Chapter One Preview
+                    {genre.label} | {selectedPdf.language || 'English'} | Chapter One Preview
                   </Text>
                 </View>
                 <TouchableOpacity onPress={() => sharePdf(selectedPdf)} style={{ padding: 8 }}>
@@ -694,7 +802,7 @@ export default function NovelHubScreen() {
   const renderNovelCatalog = () => (
     <ScrollView
       refreshControl={<RefreshControl refreshing={refreshing}
-        onRefresh={() => { setRefreshing(true); fetchDocuments(search, 1, false) }}
+        onRefresh={() => { setRefreshing(true); fetchDocuments(search, 1, false, activeGenre, activeLanguage) }}
         tintColor={c.primary} />}
       onMomentumScrollEnd={({ nativeEvent }) => {
         const nearBottom = nativeEvent.layoutMeasurement.height + nativeEvent.contentOffset.y >= nativeEvent.contentSize.height - 260
@@ -705,7 +813,9 @@ export default function NovelHubScreen() {
       <DocumentRail title="Best Novels" items={bestDocuments} size={122} onViewAll={() => selectGenre('all')} />
       <RankingRail />
       <NativeAdvancedAd style={s.adUnit} />
+      <CategoryCards />
       <GenreChips />
+      <LanguageChips />
       {categorySections.map((section) => (
         <DocumentRail
           key={section.key}
@@ -759,7 +869,7 @@ export default function NovelHubScreen() {
               onChangeText={(value) => {
                 setSearch(value)
                 setLoading(true)
-                fetchDocuments(value, 1, false)
+                fetchDocuments(value, 1, false, activeGenre, activeLanguage)
               }}
             />
           </View>
@@ -843,7 +953,53 @@ export default function NovelHubScreen() {
                 })}
               </View>
 
+              <Text style={{ color: c.text, fontWeight: '900', marginBottom: 8 }}>Language</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+                {LANGUAGE_OPTIONS.map((language) => {
+                  const active = uploadForm.language === language
+                  return (
+                    <TouchableOpacity
+                      key={language}
+                      onPress={() => setUploadForm({ ...uploadForm, language })}
+                      style={{
+                        borderRadius: 16,
+                        paddingHorizontal: 10,
+                        paddingVertical: 7,
+                        backgroundColor: active ? c.primary : c.surfaceHigh,
+                      }}>
+                      <Text style={{ color: active ? '#FFFFFF' : c.textMuted, fontSize: 11, fontWeight: '900' }}>
+                        {language}
+                      </Text>
+                    </TouchableOpacity>
+                  )
+                })}
+              </View>
+
               <Text style={{ color: c.text, fontWeight: '900', marginBottom: 8 }}>Rights and source</Text>
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+                {[
+                  { key: 'publisher_submission', label: 'I own/represent this PDF' },
+                  { key: 'creator_upload', label: 'Permission granted' },
+                ].map((option) => {
+                  const active = uploadForm.contentOrigin === option.key
+                  return (
+                    <TouchableOpacity
+                      key={option.key}
+                      onPress={() => setUploadForm({ ...uploadForm, contentOrigin: option.key })}
+                      style={{
+                        flex: 1,
+                        borderRadius: 14,
+                        paddingHorizontal: 10,
+                        paddingVertical: 10,
+                        backgroundColor: active ? c.primary : c.surfaceHigh,
+                      }}>
+                      <Text style={{ color: active ? '#FFFFFF' : c.textMuted, fontSize: 11, fontWeight: '900', textAlign: 'center' }}>
+                        {option.label}
+                      </Text>
+                    </TouchableOpacity>
+                  )
+                })}
+              </View>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
                 {LICENSE_TYPES.map((license) => {
                   const active = uploadForm.licenseType === license.key
@@ -889,6 +1045,19 @@ export default function NovelHubScreen() {
                   multiline={key === 'attributionText' || key === 'rightsSummary'}
                   onChangeText={(value) => setUploadForm({ ...uploadForm, [key]: value })} />
               ))}
+
+              <TouchableOpacity
+                onPress={() => setUploadForm({ ...uploadForm, rightsConfirmed: !uploadForm.rightsConfirmed })}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <Ionicons
+                  name={uploadForm.rightsConfirmed ? 'checkbox-outline' : 'square-outline'}
+                  size={20}
+                  color={uploadForm.rightsConfirmed ? c.primary : c.textMuted}
+                />
+                <Text style={{ color: c.text, fontSize: 13, fontWeight: '900', flex: 1 }}>
+                  I confirm I own this PDF or have legal permission to publish it on NendPlay.
+                </Text>
+              </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={() => setUploadForm({ ...uploadForm, requiresAttribution: !uploadForm.requiresAttribution })}
