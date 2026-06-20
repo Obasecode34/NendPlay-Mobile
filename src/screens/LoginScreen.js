@@ -77,7 +77,7 @@ export default function LoginScreen({ navigation }) {
     }
     setLoading(true)
     try {
-      const res = await authService.login({ email: form.email.trim(), password: form.password })
+      const res = await authService.login({ identifier: form.email.trim(), password: form.password })
       const { user, accessToken, refreshToken } = res.data.data
       await setAuth(user, accessToken, refreshToken)
       if (!hasSavedBiometricLogin) {
