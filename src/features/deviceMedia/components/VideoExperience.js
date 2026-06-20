@@ -6,6 +6,9 @@ import {
 import { VideoView, useVideoPlayer } from 'expo-video'
 import { Ionicons } from '@expo/vector-icons'
 import useDeviceMediaStore from '../stores/deviceMediaStore'
+import AdBanner from '../../../components/ads/AdBanner'
+import NativeAdvancedAd from '../../../components/ads/NativeAdvancedAd'
+import NendPlayAdCard from '../../../components/ads/NendPlayAdCard'
 import {
   PLAYBACK_SPEEDS, SORT_OPTIONS, cleanTitle,
   formatDuration, formatSize, getAssetSize, getSourceForUri, searchAssets, sortAssets,
@@ -48,6 +51,26 @@ function ControlButton({ icon, label, color = '#FFFFFF', onPress, size = 24 }) {
         <Text style={{ color, fontSize: 10, fontWeight: '900', marginTop: 2 }}>{label}</Text>
       ) : null}
     </TouchableOpacity>
+  )
+}
+
+function DeviceMediaAdStack({ theme }) {
+  const c = theme.colors
+  return (
+    <View style={{
+      marginHorizontal: 16,
+      marginBottom: 14,
+      gap: 10,
+      padding: 10,
+      borderRadius: 18,
+      backgroundColor: c.bgDeep,
+      borderWidth: 1,
+      borderColor: c.border,
+    }}>
+      <NendPlayAdCard placement="media" style={{ marginHorizontal: 0, marginBottom: 0 }} />
+      <AdBanner style={{ marginHorizontal: 0, marginBottom: 0 }} horizontalPadding={64} />
+      <NativeAdvancedAd style={{ marginHorizontal: 0, marginBottom: 0 }} />
+    </View>
   )
 }
 
@@ -468,6 +491,8 @@ export default function VideoExperience({ theme, videos, loading, loadMore, hasM
           </Text>
         ) : null}
       </View>
+
+      <DeviceMediaAdStack theme={theme} />
 
       <FlatList
         key={`video-${layout}`}

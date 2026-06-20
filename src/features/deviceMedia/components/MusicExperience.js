@@ -3,6 +3,9 @@ import { View, Text, TouchableOpacity, TextInput, FlatList, Dimensions } from 'r
 import { useVideoPlayer } from 'expo-video'
 import { Ionicons } from '@expo/vector-icons'
 import useDeviceMediaStore from '../stores/deviceMediaStore'
+import AdBanner from '../../../components/ads/AdBanner'
+import NativeAdvancedAd from '../../../components/ads/NativeAdvancedAd'
+import NendPlayAdCard from '../../../components/ads/NendPlayAdCard'
 import {
   SORT_OPTIONS, buildMusicRows, cleanTitle, formatDuration, getSourceForUri,
   searchAssets, sortAssets,
@@ -32,6 +35,26 @@ function MusicChip({ theme, active, label, icon, onPress }) {
         {label}
       </Text>
     </TouchableOpacity>
+  )
+}
+
+function DeviceMusicAdStack({ theme }) {
+  const c = theme.colors
+  return (
+    <View style={{
+      marginHorizontal: 16,
+      marginBottom: 14,
+      gap: 10,
+      padding: 10,
+      borderRadius: 18,
+      backgroundColor: c.bgDeep,
+      borderWidth: 1,
+      borderColor: c.border,
+    }}>
+      <NendPlayAdCard placement="media" style={{ marginHorizontal: 0, marginBottom: 0 }} />
+      <AdBanner style={{ marginHorizontal: 0, marginBottom: 0 }} horizontalPadding={64} />
+      <NativeAdvancedAd style={{ marginHorizontal: 0, marginBottom: 0 }} />
+    </View>
   )
 }
 
@@ -332,6 +355,8 @@ export default function MusicExperience({ theme, music, loading, loadMore, hasMo
           </Text>
         ) : null}
       </View>
+
+      <DeviceMusicAdStack theme={theme} />
 
       <FlatList
         data={visibleSongs}
