@@ -68,9 +68,12 @@ function ShortsAdItem({ itemHeight, isActive, onEnded }) {
 
   return (
     <View style={[styles.shortPage, { height: itemHeight, justifyContent: 'center', paddingVertical: 24 }]}>
-      <NendPlayAdCard placement="shorts" style={{ marginHorizontal: 16 }} />
-      <AdBanner style={{ marginHorizontal: 16 }} />
-      <NativeAdvancedAd style={{ marginHorizontal: 16 }} />
+      <View style={styles.shortsAdShell}>
+        <Text style={styles.shortsAdLabel}>SPONSORED</Text>
+        <NendPlayAdCard placement="shorts" style={{ marginHorizontal: 0, marginBottom: 12 }} />
+        <AdBanner style={{ marginHorizontal: 0 }} />
+        <NativeAdvancedAd style={{ marginHorizontal: 0, marginBottom: 0 }} />
+      </View>
     </View>
   )
 }
@@ -492,7 +495,7 @@ export default function ShortsScreen({ route }) {
   const feedItems = useMemo(() => {
     const items = []
     shorts.forEach((short, index) => {
-      if (index > 0 && index % 5 === 0) {
+      if (index > 0 && (index === 1 || index % 4 === 0)) {
         items.push({ _id: `shorts-ad-${index}`, isAd: true })
       }
       items.push(short)
@@ -612,6 +615,21 @@ export default function ShortsScreen({ route }) {
 
 const styles = StyleSheet.create({
   shortPage: { width, backgroundColor: '#000000' },
+  shortsAdShell: {
+    marginHorizontal: 16,
+    padding: 14,
+    borderRadius: 20,
+    backgroundColor: 'rgba(20,20,30,0.96)',
+    borderWidth: 1,
+    borderColor: 'rgba(124,58,237,0.45)',
+  },
+  shortsAdLabel: {
+    color: '#A78BFA',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0,
+    marginBottom: 10,
+  },
   video: { width },
   tapLayer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   pauseOverlay: {

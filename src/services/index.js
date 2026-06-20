@@ -140,3 +140,7 @@ export const rewardService = {
   initializePaidAdFree: (data) => api.post('/rewards/ad-free/initialize', data),
   verifyPaidAdFree: (data) => api.post('/rewards/ad-free/verify', data),
 }
+
+export const analyticsService = {
+  track: (data) => api.post('/analytics/track', data),
+}

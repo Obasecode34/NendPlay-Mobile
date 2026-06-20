@@ -14,10 +14,19 @@ import AppNavigator from './src/navigation/AppNavigator'
 import { registerForPushNotificationsAsync } from './src/services/pushNotifications'
 import useAppOpenAd from './src/components/ads/useAppOpenAd'
 import { initializeMobileAds } from './src/components/ads/mobileAds'
-import { notificationService } from './src/services/index'
+import { analyticsService, notificationService } from './src/services/index'
 
 const navigationRef = createNavigationContainerRef()
 const DISMISSED_POPUPS_KEY = 'nendplay-dismissed-popups'
+const ANALYTICS_GUEST_KEY = 'nendplay-analytics-guest-id'
+
+async function getAnalyticsGuestId() {
+  const existing = await AsyncStorage.getItem(ANALYTICS_GUEST_KEY)
+  if (existing) return existing
+  const next = `mobile-${Date.now()}-${Math.random().toString(36).slice(2)}`
+  await AsyncStorage.setItem(ANALYTICS_GUEST_KEY, next)
+  return next
+}
 
 function openNotificationTarget(data = {}) {
   if (!navigationRef.isReady()) return
@@ -58,6 +67,13 @@ export default function App() {
       initializeMobileAds().then(setAdsReady)
       await loadTheme()
       await initAuth()
+      const guestId = await getAnalyticsGuestId()
+      analyticsService.track({
+        eventType: 'app_open',
+        platform: 'mobile',
+        screen: 'app',
+        guestId,
+      }).catch(() => {})
     }
     init()
   }, [])

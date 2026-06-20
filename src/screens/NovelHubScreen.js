@@ -704,6 +704,7 @@ export default function NovelHubScreen() {
       <DocumentRail title="History" items={recentDocuments} size={96} onViewAll={() => selectGenre('all')} />
       <DocumentRail title="Best Novels" items={bestDocuments} size={122} onViewAll={() => selectGenre('all')} />
       <RankingRail />
+      <NativeAdvancedAd style={s.adUnit} />
       <GenreChips />
       {categorySections.map((section) => (
         <DocumentRail
@@ -769,7 +770,6 @@ export default function NovelHubScreen() {
         <View style={s.adStack}>
           <AdBanner style={s.adUnit} horizontalPadding={64} />
           <NendPlayAdCard placement="novels" style={s.adUnit} />
-          <NativeAdvancedAd style={s.adUnit} />
         </View>
       ) : null}
 

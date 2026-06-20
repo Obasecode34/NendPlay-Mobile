@@ -195,6 +195,15 @@ export default function DownloadsScreen({ embedded = false, contentType, navigat
   }
 
   const getItems = () => activeTab === 'all' ? downloads : (grouped[activeTab] || [])
+  const getItemsWithAds = () => {
+    const items = getItems()
+    if (embedded || items.length < 4) return items
+    return [
+      ...items.slice(0, 4),
+      { _id: 'native-downloads-ad', isNativeAd: true },
+      ...items.slice(4),
+    ]
+  }
   const nonEmpty = Object.entries(grouped).filter(([, items]) => items.length > 0).map(([k]) => k)
 
   const s = StyleSheet.create({
@@ -236,6 +245,10 @@ export default function DownloadsScreen({ embedded = false, contentType, navigat
   })
 
   const renderItem = ({ item }) => {
+    if (item.isNativeAd) {
+      return <NativeAdvancedAd style={s.adUnit} />
+    }
+
     const snap = item.contentSnapshot
     return (
       <View style={s.itemCard}>
@@ -339,7 +352,7 @@ export default function DownloadsScreen({ embedded = false, contentType, navigat
           />
 
           <FlatList
-            data={getItems()}
+            data={getItemsWithAds()}
             keyExtractor={(item) => item._id}
             renderItem={renderItem}
             contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 20 }}
@@ -347,7 +360,6 @@ export default function DownloadsScreen({ embedded = false, contentType, navigat
               <View>
                 <AdBanner style={s.adUnit} horizontalPadding={64} />
                 <NendPlayAdCard placement="downloads" style={s.adUnit} />
-                <NativeAdvancedAd style={s.adUnit} />
               </View>
             ) : null}
             refreshControl={

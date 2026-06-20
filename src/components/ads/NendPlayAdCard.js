@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
-import { Image, Linking, Text, TouchableOpacity, View } from 'react-native'
+import { Image, Linking, Pressable, Text, TouchableOpacity, View } from 'react-native'
 import { VideoView, useVideoPlayer } from 'expo-video'
+import { Ionicons } from '@expo/vector-icons'
 import Constants from 'expo-constants'
 import useAuthStore from '../../services/authStore.native'
 import { adService } from '../../services'
@@ -20,9 +21,10 @@ const withTimeout = (promise, ms = 5000) => Promise.race([
 ])
 
 function AdVideoCreative({ uri, backgroundColor }) {
+  const [muted, setMuted] = useState(true)
   const player = useVideoPlayer({ uri }, (player) => {
     player.loop = true
-    player.muted = true
+    player.muted = muted
   })
 
   useEffect(() => {
@@ -30,13 +32,35 @@ function AdVideoCreative({ uri, backgroundColor }) {
     return () => player.pause()
   }, [player])
 
+  useEffect(() => {
+    player.muted = muted
+  }, [muted, player])
+
   return (
-    <VideoView
-      player={player}
-      nativeControls={false}
-      contentFit="cover"
-      style={{ width: '100%', height: 150, backgroundColor }}
-    />
+    <View style={{ width: '100%', aspectRatio: 16 / 9, backgroundColor }}>
+      <VideoView
+        player={player}
+        nativeControls={false}
+        contentFit="contain"
+        style={{ width: '100%', height: '100%', backgroundColor }}
+      />
+      <Pressable
+        onPress={() => setMuted((value) => !value)}
+        hitSlop={10}
+        style={{
+          position: 'absolute',
+          right: 10,
+          bottom: 10,
+          width: 34,
+          height: 34,
+          borderRadius: 17,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: 'rgba(0,0,0,0.62)',
+        }}>
+        <Ionicons name={muted ? 'volume-mute' : 'volume-high'} size={18} color="#FFFFFF" />
+      </Pressable>
+    </View>
   )
 }
 
@@ -45,7 +69,13 @@ function AdCreative({ ad, backgroundColor }) {
 
   if (!ad?.mediaUrl) return null
   if (isVideo) return <AdVideoCreative uri={ad.mediaUrl} backgroundColor={backgroundColor} />
-  return <Image source={{ uri: ad.mediaUrl }} style={{ width: '100%', height: 150, backgroundColor }} resizeMode="cover" />
+  return (
+    <Image
+      source={{ uri: ad.mediaUrl }}
+      style={{ width: '100%', aspectRatio: 16 / 9, backgroundColor }}
+      resizeMode="contain"
+    />
+  )
 }
 
 export default function NendPlayAdCard({ placement = 'home', style }) {

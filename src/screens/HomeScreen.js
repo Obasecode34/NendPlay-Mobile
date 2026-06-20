@@ -738,7 +738,6 @@ export default function HomeScreen({ navigation }) {
 
           <AdBanner style={{ marginHorizontal: 16 }} />
           <NendPlayAdCard placement="home" />
-          <NativeAdvancedAd />
           <CategoryTileRow
             categories={CATEGORY_TILES}
             activeCategory={activeCategory.label}
@@ -767,17 +766,19 @@ export default function HomeScreen({ navigation }) {
           ) : (
             <>
               {genreSections.map((section, index) => (
-                <MediaRow
-                  key={section.genre}
-                  title={section.genre}
-                  items={section.items.slice(0, 24)}
-                  onPress={handleMediaPress}
-                  theme={theme}
-                  onLayout={(event) => {
-                    if (index === 0 && !firstCategoryY.current) firstCategoryY.current = event.nativeEvent.layout.y
-                    if (index === 0) movieCategoryY.current = event.nativeEvent.layout.y
-                  }}
-                />
+                <React.Fragment key={section.genre}>
+                  <MediaRow
+                    title={section.genre}
+                    items={section.items.slice(0, 24)}
+                    onPress={handleMediaPress}
+                    theme={theme}
+                    onLayout={(event) => {
+                      if (index === 0 && !firstCategoryY.current) firstCategoryY.current = event.nativeEvent.layout.y
+                      if (index === 0) movieCategoryY.current = event.nativeEvent.layout.y
+                    }}
+                  />
+                  {index === 2 ? <NativeAdvancedAd /> : null}
+                </React.Fragment>
               ))}
 
               <NovelPromo documents={documents} theme={theme} onPress={() => navigation.navigate('NovelHub')} />

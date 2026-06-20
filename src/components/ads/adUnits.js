@@ -50,6 +50,10 @@ export function areRewardedInterstitialsEnabled() {
   return extra.adMobRewardedInterstitialEnabled === true
 }
 
+export function areAppOpenAdsEnabled() {
+  return extra.adMobAppOpenEnabled === true
+}
+
 export function getAdUnit(kind) {
   const key = Platform.select({
     android: `adMobAndroid${kind}Id`,

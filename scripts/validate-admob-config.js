@@ -50,6 +50,7 @@ function check(label, value, pattern, hint) {
 
 const pluginOptions = getPluginOptions();
 let valid = true;
+const forceTestAds = Boolean(extra.adMobUseTestAds);
 
 console.log("Checking AdMob app IDs...");
 for (const [label, key] of appIdFields) {
@@ -58,6 +59,10 @@ for (const [label, key] of appIdFields) {
 
 console.log("\nChecking AdMob ad unit IDs...");
 for (const [label, key, optional] of unitFields) {
+  if (forceTestAds && label.startsWith("iOS") && !extra[key]) {
+    console.warn(`WARN ${label}: missing while forced test ads are enabled`);
+    continue;
+  }
   if (optional && !extra[key]) {
     console.warn(`WARN ${label}: missing (optional until this ad unit is enabled)`);
     continue;
@@ -66,7 +71,7 @@ for (const [label, key, optional] of unitFields) {
 }
 
 console.log(`\nAds enabled: ${extra.adMobAdsEnabled !== false}`);
-console.log(`Force test ads: ${Boolean(extra.adMobUseTestAds)}`);
+console.log(`Force test ads: ${forceTestAds}`);
 
 if (!valid) {
   process.exitCode = 1;

@@ -333,13 +333,14 @@ export default function MediaPlayerScreen({ route, navigation }) {
             <View style={s.adStack}>
               <AdBanner style={s.adUnit} horizontalPadding={64} />
               <NendPlayAdCard placement="media" style={s.adUnit} />
-              <NativeAdvancedAd style={s.adUnit} />
             </View>
           ) : null}
 
           {media?.description && (
             <Text style={s.description}>{media.description}</Text>
           )}
+
+          {!locked && !localUri ? <NativeAdvancedAd style={s.adUnit} /> : null}
 
           {collectionItems.length > 1 && (
             <View>

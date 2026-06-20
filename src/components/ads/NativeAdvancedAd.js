@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { Component, useEffect, useMemo, useState } from 'react'
 import { Image, Text, TouchableOpacity, View } from 'react-native'
 import useThemeStore from '../../stores/themeStore'
 import { areAdsEnabled, getAdUnit } from './adUnits'
@@ -6,13 +6,31 @@ import { getMobileAdsModule } from './mobileAds'
 import useAuthStore from '../../services/authStore.native'
 import { hasAdFreeAccess } from './adEntitlements'
 
-export default function NativeAdvancedAd({ style }) {
+class NativeAdBoundary extends Component {
+  constructor(props) {
+    super(props)
+    this.state = { crashed: false }
+  }
+
+  static getDerivedStateFromError() {
+    return { crashed: true }
+  }
+
+  componentDidCatch() {}
+
+  render() {
+    if (this.state.crashed) return null
+    return this.props.children
+  }
+}
+
+function NativeAdvancedAdContent({ style }) {
   const { theme } = useThemeStore()
   const { user } = useAuthStore()
   const c = theme.colors
   const [nativeAd, setNativeAd] = useState(null)
   const [failed, setFailed] = useState(false)
-  const ads = getMobileAdsModule()
+  const ads = useMemo(() => getMobileAdsModule(), [])
   const NativeAd = ads?.NativeAd
   const NativeAdView = ads?.NativeAdView
   const NativeAsset = ads?.NativeAsset
@@ -50,9 +68,9 @@ export default function NativeAdvancedAd({ style }) {
     return () => {
       mounted = false
       clearTimeout(timeout)
-      loadedAd?.destroy?.()
+      try { loadedAd?.destroy?.() } catch {}
     }
-  }, [NativeAd, unitId])
+  }, [NativeAd, unitId, user?.adFreeUntil, user?.isSubscriptionActive, user?.subscriptionExpiry, user?.subscriptionPlan])
 
   if (hasAdFreeAccess(user) || !areAdsEnabled() || !unitId || !NativeAdView || !NativeAsset || !NativeAssetType || !NativeMediaView) return null
   if (failed) return null
@@ -144,5 +162,13 @@ export default function NativeAdvancedAd({ style }) {
         ) : null}
       </View>
     </NativeAdView>
+  )
+}
+
+export default function NativeAdvancedAd(props) {
+  return (
+    <NativeAdBoundary>
+      <NativeAdvancedAdContent {...props} />
+    </NativeAdBoundary>
   )
 }
