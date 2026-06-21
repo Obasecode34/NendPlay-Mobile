@@ -8,7 +8,8 @@ import {
 import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import useThemeStore from '../stores/themeStore'
-import { mediaService, novelService } from '../services/index'
+import useAuthStore from '../services/authStore.native'
+import { mediaService, novelService, notificationService } from '../services/index'
 import AdBanner from '../components/ads/AdBanner'
 import NativeAdvancedAd from '../components/ads/NativeAdvancedAd'
 import NendPlayAdCard from '../components/ads/NendPlayAdCard'
@@ -197,6 +198,50 @@ function getThumbnailUri(item) {
   return mediaService.getThumbnailUrl(item) || item.thumbnailUrl || ''
 }
 
+function NendPlayLogo() {
+  return (
+    <View>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <Text style={{ color: '#FFFFFF', fontSize: 24, fontWeight: '900' }}>NENDPL</Text>
+        <View style={{ width: 22, height: 24, marginHorizontal: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <View
+            style={{
+              width: 0,
+              height: 0,
+              borderTopWidth: 10,
+              borderBottomWidth: 10,
+              borderLeftWidth: 17,
+              borderTopColor: 'transparent',
+              borderBottomColor: 'transparent',
+              borderLeftColor: '#8B5CF6',
+              transform: [{ rotate: '-10deg' }],
+            }}
+          />
+          <View
+            style={{
+              position: 'absolute',
+              width: 6,
+              height: 6,
+              borderRadius: 3,
+              backgroundColor: '#FFFFFF',
+              left: 7,
+              top: 9,
+            }}
+          />
+        </View>
+        <Text style={{ color: '#FFFFFF', fontSize: 24, fontWeight: '900' }}>Y</Text>
+      </View>
+      <View style={{ flexDirection: 'row', marginLeft: 28, gap: 8 }}>
+        {'MEDIA'.split('').map((letter) => (
+          <Text key={letter} style={{ color: '#B456FF', fontSize: 10, fontWeight: '900' }}>
+            {letter}
+          </Text>
+        ))}
+      </View>
+    </View>
+  )
+}
+
 function MediaCard({ item, onPress, theme }) {
   const c = theme.colors
   const thumbnailUri = getThumbnailUri(item)
@@ -362,6 +407,7 @@ function NovelPromo({ documents, theme, onPress }) {
 
 export default function HomeScreen({ navigation }) {
   const { theme } = useThemeStore()
+  const { user, isAuthenticated } = useAuthStore()
   const insets = useSafeAreaInsets()
   const c = theme.colors
 
@@ -375,8 +421,10 @@ export default function HomeScreen({ navigation }) {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [search, setSearch] = useState('')
+  const [searchOpen, setSearchOpen] = useState(false)
   const [searchResults, setSearchResults] = useState([])
   const [searching, setSearching] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
   const [mediaPage, setMediaPage] = useState(1)
   const [hasMoreMedia, setHasMoreMedia] = useState(false)
   const [loadingMoreMedia, setLoadingMoreMedia] = useState(false)
@@ -390,6 +438,28 @@ export default function HomeScreen({ navigation }) {
   const firstCategoryY = useRef(0)
 
   useEffect(() => { fetchContent() }, [])
+
+  useEffect(() => {
+    let active = true
+    const loadUnread = async () => {
+      if (!isAuthenticated) {
+        setUnreadCount(0)
+        return
+      }
+      try {
+        const res = await notificationService.getMine({ page: 1, limit: 1 })
+        if (active) setUnreadCount(res.data?.data?.unread || 0)
+      } catch {
+        if (active) setUnreadCount(0)
+      }
+    }
+    loadUnread()
+    const timer = setInterval(loadUnread, 60000)
+    return () => {
+      active = false
+      clearInterval(timer)
+    }
+  }, [isAuthenticated])
 
   useEffect(() => {
     if (featuredItems.length <= 1) return undefined
@@ -505,6 +575,12 @@ export default function HomeScreen({ navigation }) {
     })
   }
 
+  const openProfile = () => {
+    const parentNavigation = navigation.getParent?.()
+    if (parentNavigation) parentNavigation.navigate('Profile')
+    else navigation.navigate('Profile')
+  }
+
   const tabMedia = allMedia.filter((item) => matchesHomeTab(item, activeHomeTab))
   const visibleMedia = tabMedia.filter((item) => (
     activeCategory.label === 'All'
@@ -527,11 +603,47 @@ export default function HomeScreen({ navigation }) {
     container: { flex: 1, backgroundColor: c.bg },
     header: {
       paddingTop: insets.top + 8,
-      paddingHorizontal: 16, paddingBottom: 12,
-      backgroundColor: c.bgDeep,
-      borderBottomWidth: 1, borderBottomColor: c.border,
+      paddingHorizontal: 16, paddingBottom: searchOpen ? 12 : 10,
+      backgroundColor: '#030409',
+      borderBottomWidth: 1, borderBottomColor: 'rgba(139,92,246,0.18)',
     },
-    headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+    headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    headerActions: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    headerIcon: {
+      width: 42,
+      height: 42,
+      borderRadius: 21,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.28)',
+      backgroundColor: 'rgba(255,255,255,0.03)',
+    },
+    notificationBadge: {
+      position: 'absolute',
+      top: -3,
+      right: -3,
+      minWidth: 18,
+      height: 18,
+      borderRadius: 9,
+      paddingHorizontal: 4,
+      backgroundColor: '#8B5CF6',
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: '#030409',
+    },
+    notificationBadgeText: { color: '#FFFFFF', fontSize: 9, fontWeight: '900' },
+    profileAvatar: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      overflow: 'hidden',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: c.primary,
+    },
+    profileAvatarText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
     greeting: { fontSize: 20, fontWeight: '800', color: c.text },
     greetingSub: { fontSize: 13, color: c.textMuted },
     searchWrap: {
@@ -539,6 +651,7 @@ export default function HomeScreen({ navigation }) {
       backgroundColor: c.surface, borderRadius: 12,
       borderWidth: 1, borderColor: c.border,
       paddingHorizontal: 12, gap: 8,
+      marginTop: 12,
     },
     searchInput: { flex: 1, color: c.text, fontSize: 14, paddingVertical: 11 },
     hero: {
@@ -600,22 +713,51 @@ export default function HomeScreen({ navigation }) {
     <View style={s.container}>
       {/* Header */}
       <View style={s.header}>
-        {/* Search */}
-        <View style={s.searchWrap}>
-          <Ionicons name="search" size={16} color={c.textMuted} />
-          <TextInput
-            style={s.searchInput}
-            placeholder="Search movies, music, shows..."
-            placeholderTextColor={c.textMuted}
-            value={search}
-            onChangeText={handleSearch}
-          />
-          {search.length > 0 && (
-            <TouchableOpacity onPress={() => { setSearch(''); setSearchResults([]) }}>
-              <Ionicons name="close-circle" size={16} color={c.textMuted} />
+        <View style={s.headerTop}>
+          <NendPlayLogo />
+          <View style={s.headerActions}>
+            <TouchableOpacity style={s.headerIcon} onPress={() => setSearchOpen((value) => !value)} activeOpacity={0.82}>
+              <Ionicons name="search-outline" size={23} color="#FFFFFF" />
             </TouchableOpacity>
-          )}
+            <TouchableOpacity style={s.headerIcon} onPress={openProfile} activeOpacity={0.82}>
+              <Ionicons name="notifications-outline" size={23} color="#FFFFFF" />
+              {unreadCount > 0 && (
+                <View style={s.notificationBadge}>
+                  <Text style={s.notificationBadgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity style={s.headerIcon} onPress={openProfile} activeOpacity={0.82}>
+              <View style={s.profileAvatar}>
+                {user?.profilePic ? (
+                  <Image source={{ uri: user.profilePic }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                ) : (
+                  <Text style={s.profileAvatarText}>
+                    {(user?.profileName || user?.username || 'G').charAt(0).toUpperCase()}
+                  </Text>
+                )}
+              </View>
+            </TouchableOpacity>
+          </View>
         </View>
+        {searchOpen && (
+          <View style={s.searchWrap}>
+            <Ionicons name="search" size={16} color={c.textMuted} />
+            <TextInput
+              style={s.searchInput}
+              placeholder="Search movies, music, shows..."
+              placeholderTextColor={c.textMuted}
+              value={search}
+              onChangeText={handleSearch}
+              autoFocus
+            />
+            {search.length > 0 && (
+              <TouchableOpacity onPress={() => { setSearch(''); setSearchResults([]) }}>
+                <Ionicons name="close-circle" size={16} color={c.textMuted} />
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
       </View>
 
       {loading ? (
