@@ -202,15 +202,15 @@ function NendPlayLogo() {
   return (
     <View>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <Text style={{ color: '#FFFFFF', fontSize: 24, fontWeight: '900' }}>NENDPL</Text>
-        <View style={{ width: 22, height: 24, marginHorizontal: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text style={{ color: '#FFFFFF', fontSize: 20, fontWeight: '900' }}>NENDPL</Text>
+        <View style={{ width: 19, height: 21, marginHorizontal: 1, justifyContent: 'center', alignItems: 'center' }}>
           <View
             style={{
               width: 0,
               height: 0,
-              borderTopWidth: 10,
-              borderBottomWidth: 10,
-              borderLeftWidth: 17,
+              borderTopWidth: 8,
+              borderBottomWidth: 8,
+              borderLeftWidth: 14,
               borderTopColor: 'transparent',
               borderBottomColor: 'transparent',
               borderLeftColor: '#8B5CF6',
@@ -224,16 +224,16 @@ function NendPlayLogo() {
               height: 6,
               borderRadius: 3,
               backgroundColor: '#FFFFFF',
-              left: 7,
-              top: 9,
+              left: 6,
+              top: 8,
             }}
           />
         </View>
-        <Text style={{ color: '#FFFFFF', fontSize: 24, fontWeight: '900' }}>Y</Text>
+        <Text style={{ color: '#FFFFFF', fontSize: 20, fontWeight: '900' }}>Y</Text>
       </View>
-      <View style={{ flexDirection: 'row', marginLeft: 28, gap: 8 }}>
+      <View style={{ flexDirection: 'row', marginLeft: 24, gap: 7 }}>
         {'MEDIA'.split('').map((letter) => (
-          <Text key={letter} style={{ color: '#B456FF', fontSize: 10, fontWeight: '900' }}>
+          <Text key={letter} style={{ color: '#B456FF', fontSize: 9, fontWeight: '900' }}>
             {letter}
           </Text>
         ))}
@@ -607,12 +607,12 @@ export default function HomeScreen({ navigation }) {
       backgroundColor: '#030409',
       borderBottomWidth: 1, borderBottomColor: 'rgba(139,92,246,0.18)',
     },
-    headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    headerActions: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+    headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 0 },
     headerIcon: {
-      width: 42,
-      height: 42,
-      borderRadius: 21,
+      width: 38,
+      height: 38,
+      borderRadius: 19,
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: 1,
@@ -635,9 +635,9 @@ export default function HomeScreen({ navigation }) {
     },
     notificationBadgeText: { color: '#FFFFFF', fontSize: 9, fontWeight: '900' },
     profileAvatar: {
-      width: 34,
-      height: 34,
-      borderRadius: 17,
+      width: 31,
+      height: 31,
+      borderRadius: 16,
       overflow: 'hidden',
       alignItems: 'center',
       justifyContent: 'center',
@@ -717,10 +717,10 @@ export default function HomeScreen({ navigation }) {
           <NendPlayLogo />
           <View style={s.headerActions}>
             <TouchableOpacity style={s.headerIcon} onPress={() => setSearchOpen((value) => !value)} activeOpacity={0.82}>
-              <Ionicons name="search-outline" size={23} color="#FFFFFF" />
+              <Ionicons name="search-outline" size={21} color="#FFFFFF" />
             </TouchableOpacity>
             <TouchableOpacity style={s.headerIcon} onPress={openProfile} activeOpacity={0.82}>
-              <Ionicons name="notifications-outline" size={23} color="#FFFFFF" />
+              <Ionicons name="notifications-outline" size={21} color="#FFFFFF" />
               {unreadCount > 0 && (
                 <View style={s.notificationBadge}>
                   <Text style={s.notificationBadgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
