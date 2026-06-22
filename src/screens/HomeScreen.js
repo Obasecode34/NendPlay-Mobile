@@ -29,7 +29,16 @@ const CATEGORY_LABELS = {
 const DEFAULT_CATEGORY_ORDER = [
   'movie', 'music', 'tv_show', 'podcast', 'comedy', 'talk_show', 'short',
 ]
-const HOME_TABS = ['Shorts', 'Trending', 'Movie', 'Anime', 'Cartoon', 'Sports', 'WWE']
+const HOME_TABS = [
+  { label: 'All', icon: 'albums-outline' },
+  { label: 'Movies', icon: 'film-outline' },
+  { label: 'Series', icon: 'tv-outline' },
+  { label: 'Shorts', icon: 'sparkles-outline' },
+  { label: 'Live', icon: 'radio-outline' },
+  { label: 'News', icon: 'newspaper-outline', route: 'DailyNews' },
+  { label: 'NovelHub', icon: 'book-outline', route: 'NovelHub' },
+  { label: 'Music', icon: 'musical-notes-outline' },
+]
 const HOME_PAGE_LIMIT = 120
 const CATEGORY_TILES = [
   { label: 'All', icon: 'filter-outline', terms: [] },
@@ -161,9 +170,13 @@ function isShortMedia(item) {
 }
 
 function matchesHomeTab(item, tab) {
+  if (tab === 'All') return true
   if (tab === 'Shorts') return isShortMedia(item)
   if (hasLabel(item, tab, ['navigationLabels', 'homeSections'])) return true
-  if (tab === 'Movie') return item.type === 'movie'
+  if (tab === 'Movies') return item.type === 'movie'
+  if (tab === 'Series') return item.type === 'series' || item.type === 'tv_show' || item.collectionType === 'series'
+  if (tab === 'Live') return item.isLive || item.type === 'live'
+  if (tab === 'Music') return item.type === 'music' || item.type === 'audio'
   if (tab === 'Anime') return matchesAny(item, ['anime'])
   if (tab === 'Cartoon') return matchesAny(item, ['cartoon', 'animation', 'animated'])
   if (tab === 'Sports') return hasMovieGenre(item, 'Sports') || matchesAny(item, ['sports', 'sport', 'football', 'soccer', 'basketball', 'tennis', 'boxing', 'wrestling'])
@@ -283,6 +296,138 @@ function MediaCard({ item, onPress, theme }) {
       <Text style={{ color: c.textMuted, fontSize: 11, marginTop: 2 }}>
         {item.type?.replace('_', ' ')}
       </Text>
+    </TouchableOpacity>
+  )
+}
+
+function SectionHeader({ title, accent, onSeeAll, theme }) {
+  const c = theme.colors
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, marginBottom: 10 }}>
+      <Text style={{ color: c.text, fontSize: 18, fontWeight: '900' }}>
+        {title}{accent ? <Text> {accent}</Text> : null}
+      </Text>
+      {onSeeAll ? (
+        <TouchableOpacity onPress={onSeeAll} activeOpacity={0.75}>
+          <Text style={{ color: c.textMuted, fontSize: 13, fontWeight: '700' }}>See All</Text>
+        </TouchableOpacity>
+      ) : null}
+    </View>
+  )
+}
+
+function LandscapeCard({ item, onPress, theme, progress }) {
+  const c = theme.colors
+  const thumbnailUri = getThumbnailUri(item)
+  const value = progress ?? ((Math.abs(hashText(item._id || item.title)) % 65) + 25)
+  return (
+    <TouchableOpacity activeOpacity={0.86} onPress={() => onPress(item)} style={{ width: 172, marginRight: 12 }}>
+      <View style={{ height: 78, borderRadius: 10, overflow: 'hidden', backgroundColor: c.surface, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' }}>
+        {thumbnailUri ? (
+          <Image source={{ uri: thumbnailUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+        ) : (
+          <View style={{ flex: 1, backgroundColor: '#18112B', alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="play-circle" size={28} color={c.primary} />
+          </View>
+        )}
+        <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.28)' }} />
+        <Text numberOfLines={2} style={{ position: 'absolute', left: 10, top: 10, right: 34, color: '#FFFFFF', fontSize: 11, fontWeight: '900' }}>
+          {item.title}
+        </Text>
+        <View style={{ position: 'absolute', right: 8, top: 27, width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(0,0,0,0.52)', alignItems: 'center', justifyContent: 'center' }}>
+          <Ionicons name="play" size={13} color="#FFFFFF" />
+        </View>
+        <View style={{ position: 'absolute', left: 10, right: 10, bottom: 9, height: 4, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.28)' }}>
+          <View style={{ width: `${Math.min(value, 96)}%`, height: 4, borderRadius: 4, backgroundColor: c.primary }} />
+        </View>
+        <Text style={{ position: 'absolute', right: 10, bottom: 14, color: '#FFFFFF', fontSize: 10, fontWeight: '800' }}>{value}%</Text>
+      </View>
+    </TouchableOpacity>
+  )
+}
+
+function PosterCard({ item, onPress, theme, width: cardWidth = 128, height: cardHeight = 176 }) {
+  const c = theme.colors
+  const thumbnailUri = getThumbnailUri(item)
+  return (
+    <TouchableOpacity activeOpacity={0.86} onPress={() => onPress(item)} style={{ width: cardWidth, marginRight: 12 }}>
+      <View style={{ width: cardWidth, height: cardHeight, borderRadius: 10, overflow: 'hidden', backgroundColor: c.surface, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' }}>
+        {thumbnailUri ? (
+          <Image source={{ uri: thumbnailUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+        ) : (
+          <View style={{ flex: 1, backgroundColor: '#1D1430', alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="play-circle" size={32} color={c.primary} />
+          </View>
+        )}
+        <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: 9, backgroundColor: 'rgba(0,0,0,0.48)' }}>
+          <Text numberOfLines={2} style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '900' }}>{item.title}</Text>
+          <Text numberOfLines={1} style={{ color: 'rgba(255,255,255,0.72)', fontSize: 10, marginTop: 3 }}>
+            {getCategoryLabel(item.type || 'movie')}
+          </Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  )
+}
+
+function LiveCard({ item, onPress, theme }) {
+  const c = theme.colors
+  return (
+    <TouchableOpacity activeOpacity={0.86} onPress={() => onPress(item)} style={{ width: 180, marginRight: 12 }}>
+      <View style={{ height: 104, borderRadius: 10, overflow: 'hidden', backgroundColor: c.surface, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' }}>
+        {getThumbnailUri(item) ? (
+          <Image source={{ uri: getThumbnailUri(item) }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+        ) : (
+          <View style={{ flex: 1, backgroundColor: '#251044', alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="radio" size={30} color="#EF4444" />
+          </View>
+        )}
+        <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.35)' }} />
+        <View style={{ position: 'absolute', left: 10, right: 10, bottom: 9 }}>
+          <Text numberOfLines={2} style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '900' }}>{item.title}</Text>
+          <Text style={{ color: '#FFFFFF', fontSize: 10, marginTop: 3 }}>
+            <Text style={{ color: '#EF4444' }}>● </Text>{Math.max(item.viewCount || 0, 1200).toLocaleString()} watching
+          </Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  )
+}
+
+function DocumentCard({ item, onPress, theme }) {
+  const c = theme.colors
+  return (
+    <TouchableOpacity activeOpacity={0.86} onPress={onPress} style={{ width: 136, marginRight: 12 }}>
+      <View style={{ height: 170, borderRadius: 10, overflow: 'hidden', backgroundColor: c.surface, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' }}>
+        {item.coverImage || item.coverUrl ? (
+          <Image source={{ uri: item.coverImage || item.coverUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+        ) : (
+          <View style={{ flex: 1, backgroundColor: '#1F1838', alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="book" size={34} color={c.primary} />
+          </View>
+        )}
+        <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: 9, backgroundColor: 'rgba(0,0,0,0.58)' }}>
+          <Text numberOfLines={2} style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '900' }}>{item.title}</Text>
+          <Text numberOfLines={1} style={{ color: 'rgba(255,255,255,0.72)', fontSize: 10, marginTop: 3 }}>
+            {item.author || item.category || 'NovelHub'}
+          </Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  )
+}
+
+function NewsMiniCard({ title, subtitle, icon, onPress, theme }) {
+  const c = theme.colors
+  return (
+    <TouchableOpacity activeOpacity={0.84} onPress={onPress} style={{ width: 188, minHeight: 72, marginRight: 12, borderRadius: 10, padding: 10, backgroundColor: c.surface, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', flexDirection: 'row', gap: 10 }}>
+      <View style={{ width: 52, height: 52, borderRadius: 9, backgroundColor: 'rgba(139,92,246,0.22)', alignItems: 'center', justifyContent: 'center' }}>
+        <Ionicons name={icon} size={24} color={c.primary} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text numberOfLines={2} style={{ color: c.text, fontSize: 11, fontWeight: '900' }}>{title}</Text>
+        <Text numberOfLines={1} style={{ color: c.textMuted, fontSize: 10, marginTop: 5 }}>{subtitle}</Text>
+      </View>
     </TouchableOpacity>
   )
 }
@@ -430,7 +575,7 @@ export default function HomeScreen({ navigation }) {
   const [loadingMoreMedia, setLoadingMoreMedia] = useState(false)
   const [searchPage, setSearchPage] = useState(1)
   const [hasMoreSearch, setHasMoreSearch] = useState(false)
-  const [activeHomeTab, setActiveHomeTab] = useState('Trending')
+  const [activeHomeTab, setActiveHomeTab] = useState('All')
   const [activeCategory, setActiveCategory] = useState(CATEGORY_TILES[0])
   const heroRef = useRef(null)
   const scrollRef = useRef(null)
@@ -581,6 +726,14 @@ export default function HomeScreen({ navigation }) {
     else navigation.navigate('Profile')
   }
 
+  const handleHomeTabPress = (tab) => {
+    if (tab.route) {
+      navigation.navigate(tab.route)
+      return
+    }
+    setActiveHomeTab(tab.label)
+  }
+
   const tabMedia = allMedia.filter((item) => matchesHomeTab(item, activeHomeTab))
   const visibleMedia = tabMedia.filter((item) => (
     activeCategory.label === 'All'
@@ -593,6 +746,18 @@ export default function HomeScreen({ navigation }) {
     genre,
     items: orderGenreItems(genreMovies.filter((item) => hasMovieGenre(item, genre)), genre, shuffleSeed),
   })).filter((section) => section.items.length > 0), [genreMovies, shuffleSeed])
+  const rankedMedia = byPopularity(visibleMedia)
+  const continueWatching = rankedMedia.slice(0, 6)
+  const trendingMedia = rankedMedia.filter((item) => !isShortMedia(item)).slice(0, 14)
+  const liveSectionItems = liveEvents.length ? liveEvents : rankedMedia.filter((item) => item.isLive || item.type === 'live').slice(0, 8)
+  const musicItems = allMedia.filter((item) => item.type === 'music' || item.type === 'audio').slice(0, 10)
+  const novelPreviewItems = documents.slice(0, 10)
+  const newsHighlights = [
+    { title: 'Global Leaders Meet for Peace Summit', subtitle: '2h ago', icon: 'earth-outline' },
+    { title: 'Tech Innovation Changing the World', subtitle: '5h ago', icon: 'hardware-chip-outline' },
+    { title: 'Sports Update: Local Team Wins Again', subtitle: '1h ago', icon: 'football-outline' },
+    { title: 'Economy Shows Signs of Recovery', subtitle: '3h ago', icon: 'stats-chart-outline' },
+  ]
 
   const onRefresh = useCallback(() => {
     setRefreshing(true)
@@ -644,59 +809,144 @@ export default function HomeScreen({ navigation }) {
       marginTop: 12,
     },
     searchInput: { flex: 1, color: c.text, fontSize: 14, paddingVertical: 11 },
+    filterChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 7,
+      minHeight: 38,
+      paddingHorizontal: 14,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.13)',
+      backgroundColor: 'rgba(255,255,255,0.03)',
+    },
+    filterChipActive: {
+      backgroundColor: c.primary,
+      borderColor: c.primary,
+    },
+    filterChipText: { color: c.text, fontSize: 13, fontWeight: '800' },
+    filterChipTextActive: { color: '#FFFFFF' },
     hero: {
-      margin: 16, height: 200, borderRadius: 16, overflow: 'hidden',
+      marginHorizontal: 16,
+      marginTop: 4,
+      marginBottom: 18,
+      height: 208,
+      borderRadius: 18,
+      overflow: 'hidden',
       backgroundColor: c.surface,
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.1)',
     },
     heroImage: { width: '100%', height: '100%' },
+    heroGradient: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      top: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0,0,0,0.24)',
+    },
     heroOverlay: {
       position: 'absolute', bottom: 0, left: 0, right: 0,
-      padding: 16,
-      background: 'transparent',
+      padding: 18,
     },
-    heroTitle: { color: 'white', fontSize: 20, fontWeight: '800', marginBottom: 8 },
+    heroEyebrow: { color: c.primary, fontSize: 11, fontWeight: '900', marginBottom: 4 },
+    heroTitle: { color: 'white', fontSize: 30, lineHeight: 34, fontWeight: '900', marginBottom: 8 },
+    heroSubtitle: { color: '#FFFFFF', fontSize: 13, lineHeight: 18, maxWidth: '72%' },
+    ratingBadge: {
+      position: 'absolute',
+      top: 12,
+      right: 12,
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.68)',
+      borderRadius: 6,
+      paddingHorizontal: 7,
+      paddingVertical: 3,
+      backgroundColor: 'rgba(0,0,0,0.34)',
+    },
+    ratingText: { color: '#FFFFFF', fontSize: 10, fontWeight: '900' },
     playBtn: {
       flexDirection: 'row', alignItems: 'center', gap: 6,
       backgroundColor: c.primary, paddingHorizontal: 16,
-      paddingVertical: 8, borderRadius: 20, alignSelf: 'flex-start',
+      paddingVertical: 10, borderRadius: 10, alignSelf: 'flex-start',
     },
     playBtnText: { color: 'white', fontSize: 13, fontWeight: '700' },
-    heroSlide: { width: HERO_WIDTH, height: 200 },
+    myListBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: 15,
+      paddingVertical: 10,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.22)',
+      backgroundColor: 'rgba(255,255,255,0.1)',
+    },
+    myListText: { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
+    heroSlide: { width: HERO_WIDTH, height: 208 },
     heroDots: {
-      position: 'absolute', right: 16, bottom: 16, flexDirection: 'row',
+      position: 'absolute', alignSelf: 'center', bottom: 15, flexDirection: 'row',
       alignItems: 'center', gap: 6,
     },
-    heroDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.45)' },
-    heroDotActive: { width: 18, backgroundColor: '#FFFFFF' },
-    floatingNewsButton: {
+    heroDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.64)' },
+    heroDotActive: { backgroundColor: c.primary },
+    musicCard: {
+      width: 142,
+      height: 112,
+      marginRight: 12,
+      borderRadius: 10,
+      overflow: 'hidden',
+      backgroundColor: c.surface,
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.08)',
+    },
+    musicOverlay: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.34)' },
+    musicPlay: {
       position: 'absolute',
-      right: 18,
-      bottom: 86,
-      width: 58,
-      height: 58,
-      borderRadius: 29,
-      backgroundColor: c.primary,
+      left: 10,
+      top: 38,
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: 'rgba(0,0,0,0.54)',
       alignItems: 'center',
       justifyContent: 'center',
-      borderWidth: 2,
-      borderColor: 'rgba(255,255,255,0.28)',
-      shadowColor: c.primary,
-      shadowOpacity: 0.45,
-      shadowRadius: 18,
-      shadowOffset: { width: 0, height: 8 },
-      elevation: 8,
     },
-    floatingNewsBadge: {
-      position: 'absolute',
-      top: -2,
-      right: -2,
-      width: 18,
-      height: 18,
-      borderRadius: 9,
-      backgroundColor: '#EF4444',
-      borderWidth: 2,
-      borderColor: c.bg,
+    musicTitle: { position: 'absolute', left: 10, right: 10, bottom: 24, color: '#FFFFFF', fontSize: 12, fontWeight: '900' },
+    musicSubtitle: { position: 'absolute', left: 10, bottom: 9, color: 'rgba(255,255,255,0.72)', fontSize: 10 },
+    premiumCard: {
+      marginHorizontal: 16,
+      marginBottom: 24,
+      minHeight: 90,
+      borderRadius: 16,
+      padding: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 14,
+      backgroundColor: '#7415B8',
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.13)',
     },
+    premiumIcon: {
+      width: 52,
+      height: 52,
+      borderRadius: 14,
+      backgroundColor: 'rgba(255,255,255,0.14)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    premiumTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: '900' },
+    premiumText: { color: 'rgba(255,255,255,0.82)', fontSize: 12, lineHeight: 16, marginTop: 3 },
+    subscribeButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      borderRadius: 12,
+      paddingHorizontal: 13,
+      paddingVertical: 10,
+      backgroundColor: 'rgba(255,255,255,0.16)',
+    },
+    subscribeText: { color: '#FFFFFF', fontSize: 12, fontWeight: '900' },
   })
 
   return (
@@ -793,19 +1043,16 @@ export default function HomeScreen({ navigation }) {
             if (nearBottom) loadMoreHomeMedia()
           }}>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 6, gap: 22 }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12, gap: 10 }}>
             {HOME_TABS.map((tab) => (
               <TouchableOpacity
-                key={tab}
+                key={tab.label}
                 activeOpacity={0.82}
-                onPress={() => setActiveHomeTab(tab)}>
-                <Text
-                  style={{
-                    color: activeHomeTab === tab ? c.text : c.textMuted,
-                    fontSize: 18,
-                    fontWeight: activeHomeTab === tab ? '900' : '700',
-                  }}>
-                  {tab}
+                onPress={() => handleHomeTabPress(tab)}
+                style={[s.filterChip, activeHomeTab === tab.label && s.filterChipActive]}>
+                <Ionicons name={tab.icon} size={14} color={activeHomeTab === tab.label ? '#FFFFFF' : c.text} />
+                <Text style={[s.filterChipText, activeHomeTab === tab.label && s.filterChipTextActive]}>
+                  {tab.label}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -829,27 +1076,41 @@ export default function HomeScreen({ navigation }) {
                   setFeaturedIndex(nextIndex)
                 }}
                 renderItem={({ item }) => (
-                  <TouchableOpacity activeOpacity={0.9} onPress={handleOpenMovieCategory} style={s.heroSlide}>
+                  <TouchableOpacity activeOpacity={0.9} onPress={() => handleMediaPress(item)} style={s.heroSlide}>
                     {getThumbnailUri(item)
                       ? <Image source={{ uri: getThumbnailUri(item) }} style={s.heroImage} resizeMode="cover" />
                       : <View style={{ flex: 1, backgroundColor: c.surface }} />
                     }
-                    <View style={[s.heroOverlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
+                    <View style={s.heroGradient} />
+                    <View style={s.ratingBadge}>
+                      <Text style={s.ratingText}>{item.contentRating || 'PG-13'}</Text>
+                    </View>
+                    <View style={s.heroOverlay}>
+                      <Text style={s.heroEyebrow}>NENDPLAY EXCLUSIVE</Text>
                       <Text style={s.heroTitle} numberOfLines={2}>{item.title}</Text>
-                      <TouchableOpacity style={s.playBtn} onPress={handleOpenMovieCategory}>
-                        <Ionicons name="film" size={14} color="white" />
-                        <Text style={s.playBtnText}>View Movies</Text>
-                      </TouchableOpacity>
+                      <Text style={s.heroSubtitle} numberOfLines={2}>
+                        {item.description || 'Stream premium entertainment, live moments, stories and music.'}
+                      </Text>
+                      <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+                        <TouchableOpacity style={s.playBtn} onPress={() => handleMediaPress(item)}>
+                          <Ionicons name="play" size={14} color="white" />
+                          <Text style={s.playBtnText}>Watch Now</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={s.myListBtn}>
+                          <Ionicons name="add" size={15} color="white" />
+                          <Text style={s.myListText}>My List</Text>
+                        </TouchableOpacity>
+                      </View>
                     </View>
                   </TouchableOpacity>
                 )}
               />
               {featuredItems.length > 1 && (
                 <View style={s.heroDots}>
-                  {featuredItems.map((item, index) => (
+                  {featuredItems.slice(0, 5).map((item, index) => (
                     <View
                       key={item._id}
-                      style={[s.heroDot, index === featuredIndex && s.heroDotActive]}
+                      style={[s.heroDot, index === featuredIndex % 5 && s.heroDotActive]}
                     />
                   ))}
                 </View>
@@ -857,87 +1118,146 @@ export default function HomeScreen({ navigation }) {
             </View>
           )}
 
-          <AdBanner style={{ marginHorizontal: 16 }} />
+          {continueWatching.length > 0 && (
+            <View style={{ marginBottom: 22 }}>
+              <SectionHeader title="Continue Watching" onSeeAll={handleOpenMovieCategory} theme={theme} />
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
+                {continueWatching.map((item) => (
+                  <LandscapeCard key={item._id} item={item} onPress={handleMediaPress} theme={theme} />
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
+          {trendingMedia.length > 0 && (
+            <View style={{ marginBottom: 24 }}>
+              <SectionHeader title="Trending Now" accent="🔥" onSeeAll={handleOpenMovieCategory} theme={theme} />
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
+                {trendingMedia.map((item) => (
+                  <PosterCard key={item._id} item={item} onPress={handleMediaPress} theme={theme} />
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
+          <AdBanner style={{ marginHorizontal: 16, marginBottom: 16 }} />
           <NendPlayAdCard placement="home" />
-          <CategoryTileRow
-            categories={CATEGORY_TILES}
-            activeCategory={activeCategory.label}
-            theme={theme}
-            onCategoryPress={setActiveCategory}
-          />
 
-          {activeHomeTab === 'Shorts' ? (
-            <>
-              <RankingRow
-                title="Shorts Videos"
-                items={byPopularity(shorts).slice(0, 24)}
-                onPress={handleMediaPress}
-                theme={theme}
-                onLayout={(event) => {
-                  if (!firstCategoryY.current) firstCategoryY.current = event.nativeEvent.layout.y
-                }}
-              />
-              <MediaRow
-                title="More Shorts"
-                items={shorts}
-                onPress={handleMediaPress}
-                theme={theme}
-              />
-            </>
-          ) : (
-            <>
-              {genreSections.map((section, index) => (
-                <React.Fragment key={section.genre}>
-                  <MediaRow
-                    title={section.genre}
-                    items={section.items.slice(0, 24)}
-                    onPress={handleMediaPress}
-                    theme={theme}
-                    onLayout={(event) => {
-                      if (index === 0 && !firstCategoryY.current) firstCategoryY.current = event.nativeEvent.layout.y
-                      if (index === 0) movieCategoryY.current = event.nativeEvent.layout.y
-                    }}
-                  />
-                  {index === 2 ? <NativeAdvancedAd /> : null}
-                </React.Fragment>
+          {liveSectionItems.length > 0 && (
+            <View style={{ marginBottom: 24 }}>
+              <SectionHeader title="Live Events" accent="● LIVE" onSeeAll={() => setActiveHomeTab('Live')} theme={theme} />
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
+                {liveSectionItems.map((item) => (
+                  <LiveCard key={item._id} item={item} onPress={handleMediaPress} theme={theme} />
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
+          {novelPreviewItems.length > 0 && (
+            <View style={{ marginBottom: 24 }}>
+              <SectionHeader title="NovelHub" accent="📖" onSeeAll={() => navigation.navigate('NovelHub')} theme={theme} />
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
+                {novelPreviewItems.map((item) => (
+                  <DocumentCard key={item._id} item={item} onPress={() => navigation.navigate('NovelHub')} theme={theme} />
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
+          <View style={{ marginBottom: 24 }}>
+            <SectionHeader title="News Highlights" onSeeAll={() => navigation.navigate('DailyNews')} theme={theme} />
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
+              {newsHighlights.map((item) => (
+                <NewsMiniCard
+                  key={item.title}
+                  title={item.title}
+                  subtitle={item.subtitle}
+                  icon={item.icon}
+                  onPress={() => navigation.navigate('DailyNews')}
+                  theme={theme}
+                />
               ))}
+            </ScrollView>
+          </View>
 
-              <NovelPromo documents={documents} theme={theme} onPress={() => navigation.navigate('NovelHub')} />
-            </>
+          {musicItems.length > 0 && (
+            <View style={{ marginBottom: 24 }}>
+              <SectionHeader title="Music For You" onSeeAll={() => setActiveHomeTab('Music')} theme={theme} />
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
+                {musicItems.map((item) => (
+                  <TouchableOpacity key={item._id} activeOpacity={0.86} onPress={() => handleMediaPress(item)} style={s.musicCard}>
+                    {getThumbnailUri(item) ? (
+                      <Image source={{ uri: getThumbnailUri(item) }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                    ) : (
+                      <View style={{ flex: 1, backgroundColor: '#1A1128' }} />
+                    )}
+                    <View style={s.musicOverlay} />
+                    <View style={s.musicPlay}>
+                      <Ionicons name="play" size={13} color="#FFFFFF" />
+                    </View>
+                    <Text numberOfLines={1} style={s.musicTitle}>{item.title}</Text>
+                    <Text style={s.musicSubtitle}>Playlist</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
+          <TouchableOpacity activeOpacity={0.86} onPress={() => navigation.navigate('Subscribe')} style={s.premiumCard}>
+            <View style={s.premiumIcon}>
+              <Ionicons name="gift" size={28} color="#FFFFFF" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.premiumTitle}>Go Premium Today!</Text>
+              <Text style={s.premiumText} numberOfLines={2}>
+                Unlock unlimited access and enjoy an ad-free experience.
+              </Text>
+            </View>
+            <View style={s.subscribeButton}>
+              <Text style={s.subscribeText}>Subscribe</Text>
+              <Ionicons name="chevron-forward" size={17} color="#FFFFFF" />
+            </View>
+          </TouchableOpacity>
+
+          {activeHomeTab === 'Shorts' && shorts.length > 0 && (
+            <View style={{ marginBottom: 24 }}>
+              <SectionHeader title="Shorts Videos" onSeeAll={() => {
+                const parentNavigation = navigation.getParent?.()
+                if (parentNavigation) parentNavigation.navigate('Shorts')
+                else navigation.navigate('Shorts')
+              }} theme={theme} />
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
+                {shorts.slice(0, 16).map((item) => (
+                  <PosterCard key={item._id} item={item} onPress={handleMediaPress} theme={theme} width={112} height={174} />
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
+          {genreSections.slice(0, 4).map((section, index) => (
+            <React.Fragment key={section.genre}>
+              <View style={{ marginBottom: 24 }}>
+                <SectionHeader title={section.genre} onSeeAll={handleOpenMovieCategory} theme={theme} />
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
+                  {section.items.slice(0, 16).map((item) => (
+                    <PosterCard key={item._id} item={item} onPress={handleMediaPress} theme={theme} width={118} height={166} />
+                  ))}
+                </ScrollView>
+              </View>
+              {index === 1 ? <NativeAdvancedAd /> : null}
+            </React.Fragment>
+          ))}
+
+          {visibleMedia.length === 0 && (
+            <Text style={{ color: c.textMuted, textAlign: 'center', marginTop: 20, marginHorizontal: 24 }}>
+              No content found for {activeHomeTab}.
+            </Text>
           )}
 
           {/* Live events */}
           {false && liveEvents.length > 0 && (
             <MediaRow title="🔴 Live Now" items={liveEvents} onPress={handleMediaPress} theme={theme} />
-          )}
-
-          {/* Content rows */}
-          {false && activeHomeTab !== 'Shorts' && Object.entries(visibleSections).filter(([title]) => ![
-            'Movies', 'TV Shows', 'Shorts', 'Comedy',
-          ].includes(title)).map(([title, items], index) => (
-            <MediaRow
-              key={title}
-              title={title}
-              items={items}
-              onPress={handleMediaPress}
-              theme={theme}
-              onLayout={(event) => {
-                if (index === 0) firstCategoryY.current = event.nativeEvent.layout.y
-                if (title === 'Movies') movieCategoryY.current = event.nativeEvent.layout.y
-              }}
-            />
-          ))}
-
-          {activeHomeTab !== 'Shorts' && genreSections.length === 0 && (
-            <Text style={{ color: c.textMuted, textAlign: 'center', marginTop: 20, marginHorizontal: 24 }}>
-              No movies found with the selected category and approved genres.
-            </Text>
-          )}
-
-          {activeHomeTab === 'Shorts' && visibleMedia.length === 0 && (
-            <Text style={{ color: c.textMuted, textAlign: 'center', marginTop: 20, marginHorizontal: 24 }}>
-              No media found for {activeCategory.label} Shorts.
-            </Text>
           )}
 
           {loadingMoreMedia ? (
@@ -953,15 +1273,6 @@ export default function HomeScreen({ navigation }) {
           <View style={{ height: 20 }} />
         </ScrollView>
       )}
-      <TouchableOpacity
-        activeOpacity={0.86}
-        style={s.floatingNewsButton}
-        onPress={() => navigation.navigate('DailyNews')}
-        accessibilityRole="button"
-        accessibilityLabel="Open news">
-        <Ionicons name="planet" size={27} color="#FFFFFF" />
-        <View style={s.floatingNewsBadge} />
-      </TouchableOpacity>
     </View>
   )
 }
