@@ -202,15 +202,15 @@ function NendPlayLogo() {
   return (
     <View>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <Text style={{ color: '#FFFFFF', fontSize: 20, fontWeight: '900' }}>NENDPL</Text>
-        <View style={{ width: 19, height: 21, marginHorizontal: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '900' }}>NENDPL</Text>
+        <View style={{ width: 17, height: 19, marginHorizontal: 1, justifyContent: 'center', alignItems: 'center' }}>
           <View
             style={{
               width: 0,
               height: 0,
-              borderTopWidth: 8,
-              borderBottomWidth: 8,
-              borderLeftWidth: 14,
+              borderTopWidth: 7,
+              borderBottomWidth: 7,
+              borderLeftWidth: 12,
               borderTopColor: 'transparent',
               borderBottomColor: 'transparent',
               borderLeftColor: '#8B5CF6',
@@ -224,16 +224,16 @@ function NendPlayLogo() {
               height: 6,
               borderRadius: 3,
               backgroundColor: '#FFFFFF',
-              left: 6,
-              top: 8,
+              left: 5,
+              top: 7,
             }}
           />
         </View>
-        <Text style={{ color: '#FFFFFF', fontSize: 20, fontWeight: '900' }}>Y</Text>
+        <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '900' }}>Y</Text>
       </View>
-      <View style={{ flexDirection: 'row', marginLeft: 24, gap: 7 }}>
+      <View style={{ flexDirection: 'row', marginLeft: 21, gap: 6 }}>
         {'MEDIA'.split('').map((letter) => (
-          <Text key={letter} style={{ color: '#B456FF', fontSize: 9, fontWeight: '900' }}>
+          <Text key={letter} style={{ color: '#B456FF', fontSize: 8, fontWeight: '900' }}>
             {letter}
           </Text>
         ))}
@@ -407,7 +407,7 @@ function NovelPromo({ documents, theme, onPress }) {
 
 export default function HomeScreen({ navigation }) {
   const { theme } = useThemeStore()
-  const { user, isAuthenticated } = useAuthStore()
+  const { isAuthenticated } = useAuthStore()
   const insets = useSafeAreaInsets()
   const c = theme.colors
 
@@ -602,17 +602,17 @@ export default function HomeScreen({ navigation }) {
   const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: c.bg },
     header: {
-      paddingTop: insets.top + 8,
-      paddingHorizontal: 16, paddingBottom: searchOpen ? 12 : 10,
+      paddingTop: insets.top + 6,
+      paddingHorizontal: 14, paddingBottom: searchOpen ? 10 : 8,
       backgroundColor: '#030409',
       borderBottomWidth: 1, borderBottomColor: 'rgba(139,92,246,0.18)',
     },
     headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-    headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 0 },
+    headerActions: { flexDirection: 'row', alignItems: 'center', gap: 7, flexShrink: 0 },
     headerIcon: {
-      width: 38,
-      height: 38,
-      borderRadius: 19,
+      width: 34,
+      height: 34,
+      borderRadius: 17,
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: 1,
@@ -634,16 +634,6 @@ export default function HomeScreen({ navigation }) {
       borderColor: '#030409',
     },
     notificationBadgeText: { color: '#FFFFFF', fontSize: 9, fontWeight: '900' },
-    profileAvatar: {
-      width: 31,
-      height: 31,
-      borderRadius: 16,
-      overflow: 'hidden',
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: c.primary,
-    },
-    profileAvatarText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
     greeting: { fontSize: 20, fontWeight: '800', color: c.text },
     greetingSub: { fontSize: 13, color: c.textMuted },
     searchWrap: {
@@ -717,26 +707,15 @@ export default function HomeScreen({ navigation }) {
           <NendPlayLogo />
           <View style={s.headerActions}>
             <TouchableOpacity style={s.headerIcon} onPress={() => setSearchOpen((value) => !value)} activeOpacity={0.82}>
-              <Ionicons name="search-outline" size={21} color="#FFFFFF" />
+              <Ionicons name="search-outline" size={19} color="#FFFFFF" />
             </TouchableOpacity>
             <TouchableOpacity style={s.headerIcon} onPress={openProfile} activeOpacity={0.82}>
-              <Ionicons name="notifications-outline" size={21} color="#FFFFFF" />
+              <Ionicons name="notifications-outline" size={19} color="#FFFFFF" />
               {unreadCount > 0 && (
                 <View style={s.notificationBadge}>
                   <Text style={s.notificationBadgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
                 </View>
               )}
-            </TouchableOpacity>
-            <TouchableOpacity style={s.headerIcon} onPress={openProfile} activeOpacity={0.82}>
-              <View style={s.profileAvatar}>
-                {user?.profilePic ? (
-                  <Image source={{ uri: user.profilePic }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-                ) : (
-                  <Text style={s.profileAvatarText}>
-                    {(user?.profileName || user?.username || 'G').charAt(0).toUpperCase()}
-                  </Text>
-                )}
-              </View>
             </TouchableOpacity>
           </View>
         </View>
