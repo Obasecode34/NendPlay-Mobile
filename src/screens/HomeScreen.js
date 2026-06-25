@@ -31,7 +31,11 @@ const DEFAULT_CATEGORY_ORDER = [
 ]
 const HOME_TABS = [
   { label: 'All', icon: 'albums-outline' },
-  { label: 'Movies', icon: 'film-outline' },
+  { label: 'Movie', icon: 'film-outline' },
+  { label: 'Anime', icon: 'sparkles-outline' },
+  { label: 'Cartoon', icon: 'color-palette-outline' },
+  { label: 'Sports', icon: 'football-outline' },
+  { label: 'WWE', icon: 'flash-outline' },
   { label: 'Series', icon: 'tv-outline' },
   { label: 'Shorts', icon: 'sparkles-outline' },
   { label: 'Live', icon: 'radio-outline' },
@@ -173,7 +177,7 @@ function matchesHomeTab(item, tab) {
   if (tab === 'All') return true
   if (tab === 'Shorts') return isShortMedia(item)
   if (hasLabel(item, tab, ['navigationLabels', 'homeSections'])) return true
-  if (tab === 'Movies') return item.type === 'movie'
+  if (tab === 'Movie') return item.type === 'movie'
   if (tab === 'Series') return item.type === 'series' || item.type === 'tv_show' || item.collectionType === 'series'
   if (tab === 'Live') return item.isLive || item.type === 'live'
   if (tab === 'Music') return item.type === 'music' || item.type === 'audio'
@@ -350,7 +354,7 @@ function PosterCard({ item, onPress, theme, width: cardWidth = 128, height: card
   const c = theme.colors
   const thumbnailUri = getThumbnailUri(item)
   return (
-    <TouchableOpacity activeOpacity={0.86} onPress={() => onPress(item)} style={{ width: cardWidth, marginRight: 12 }}>
+    <TouchableOpacity activeOpacity={0.86} onPress={() => onPress(item)} style={{ width: cardWidth }}>
       <View style={{ width: cardWidth, height: cardHeight, borderRadius: 10, overflow: 'hidden', backgroundColor: c.surface, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' }}>
         {thumbnailUri ? (
           <Image source={{ uri: thumbnailUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
@@ -373,7 +377,7 @@ function PosterCard({ item, onPress, theme, width: cardWidth = 128, height: card
 function LiveCard({ item, onPress, theme }) {
   const c = theme.colors
   return (
-    <TouchableOpacity activeOpacity={0.86} onPress={() => onPress(item)} style={{ width: 180, marginRight: 12 }}>
+    <TouchableOpacity activeOpacity={0.86} onPress={() => onPress(item)} style={{ width: '100%' }}>
       <View style={{ height: 104, borderRadius: 10, overflow: 'hidden', backgroundColor: c.surface, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' }}>
         {getThumbnailUri(item) ? (
           <Image source={{ uri: getThumbnailUri(item) }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
@@ -397,7 +401,7 @@ function LiveCard({ item, onPress, theme }) {
 function DocumentCard({ item, onPress, theme }) {
   const c = theme.colors
   return (
-    <TouchableOpacity activeOpacity={0.86} onPress={onPress} style={{ width: 136, marginRight: 12 }}>
+    <TouchableOpacity activeOpacity={0.86} onPress={onPress} style={{ width: '100%' }}>
       <View style={{ height: 170, borderRadius: 10, overflow: 'hidden', backgroundColor: c.surface, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' }}>
         {item.coverImage || item.coverUrl ? (
           <Image source={{ uri: item.coverImage || item.coverUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
@@ -420,7 +424,7 @@ function DocumentCard({ item, onPress, theme }) {
 function NewsMiniCard({ title, subtitle, icon, onPress, theme }) {
   const c = theme.colors
   return (
-    <TouchableOpacity activeOpacity={0.84} onPress={onPress} style={{ width: 188, minHeight: 72, marginRight: 12, borderRadius: 10, padding: 10, backgroundColor: c.surface, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', flexDirection: 'row', gap: 10 }}>
+    <TouchableOpacity activeOpacity={0.84} onPress={onPress} style={{ width: '100%', minHeight: 72, borderRadius: 10, padding: 10, backgroundColor: c.surface, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', flexDirection: 'row', gap: 10 }}>
       <View style={{ width: 52, height: 52, borderRadius: 9, backgroundColor: 'rgba(139,92,246,0.22)', alignItems: 'center', justifyContent: 'center' }}>
         <Ionicons name={icon} size={24} color={c.primary} />
       </View>
@@ -747,11 +751,12 @@ export default function HomeScreen({ navigation }) {
     items: orderGenreItems(genreMovies.filter((item) => hasMovieGenre(item, genre)), genre, shuffleSeed),
   })).filter((section) => section.items.length > 0), [genreMovies, shuffleSeed])
   const rankedMedia = byPopularity(visibleMedia)
-  const continueWatching = rankedMedia.slice(0, 6)
   const trendingMedia = rankedMedia.filter((item) => !isShortMedia(item)).slice(0, 14)
   const liveSectionItems = liveEvents.length ? liveEvents : rankedMedia.filter((item) => item.isLive || item.type === 'live').slice(0, 8)
   const musicItems = allMedia.filter((item) => item.type === 'music' || item.type === 'audio').slice(0, 10)
   const novelPreviewItems = documents.slice(0, 10)
+  const gridPosterWidth = Math.floor((width - 44) / 3)
+  const landscapeGridWidth = Math.floor((width - 44) / 2)
   const newsHighlights = [
     { title: 'Global Leaders Meet for Peace Summit', subtitle: '2h ago', icon: 'earth-outline' },
     { title: 'Tech Innovation Changing the World', subtitle: '5h ago', icon: 'hardware-chip-outline' },
@@ -812,10 +817,10 @@ export default function HomeScreen({ navigation }) {
     filterChip: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 7,
-      minHeight: 38,
-      paddingHorizontal: 14,
-      borderRadius: 12,
+      gap: 5,
+      minHeight: 32,
+      paddingHorizontal: 10,
+      borderRadius: 10,
       borderWidth: 1,
       borderColor: 'rgba(255,255,255,0.13)',
       backgroundColor: 'rgba(255,255,255,0.03)',
@@ -824,14 +829,14 @@ export default function HomeScreen({ navigation }) {
       backgroundColor: c.primary,
       borderColor: c.primary,
     },
-    filterChipText: { color: c.text, fontSize: 13, fontWeight: '800' },
+    filterChipText: { color: c.text, fontSize: 11, fontWeight: '800' },
     filterChipTextActive: { color: '#FFFFFF' },
     hero: {
       marginHorizontal: 16,
       marginTop: 4,
       marginBottom: 18,
-      height: 208,
-      borderRadius: 18,
+      height: 170,
+      borderRadius: 14,
       overflow: 'hidden',
       backgroundColor: c.surface,
       borderWidth: 1,
@@ -851,8 +856,8 @@ export default function HomeScreen({ navigation }) {
       padding: 18,
     },
     heroEyebrow: { color: c.primary, fontSize: 11, fontWeight: '900', marginBottom: 4 },
-    heroTitle: { color: 'white', fontSize: 30, lineHeight: 34, fontWeight: '900', marginBottom: 8 },
-    heroSubtitle: { color: '#FFFFFF', fontSize: 13, lineHeight: 18, maxWidth: '72%' },
+    heroTitle: { color: 'white', fontSize: 24, lineHeight: 28, fontWeight: '900', marginBottom: 6 },
+    heroSubtitle: { color: '#FFFFFF', fontSize: 11, lineHeight: 15, maxWidth: '76%' },
     ratingBadge: {
       position: 'absolute',
       top: 12,
@@ -867,23 +872,23 @@ export default function HomeScreen({ navigation }) {
     ratingText: { color: '#FFFFFF', fontSize: 10, fontWeight: '900' },
     playBtn: {
       flexDirection: 'row', alignItems: 'center', gap: 6,
-      backgroundColor: c.primary, paddingHorizontal: 16,
-      paddingVertical: 10, borderRadius: 10, alignSelf: 'flex-start',
+      backgroundColor: c.primary, paddingHorizontal: 12,
+      paddingVertical: 8, borderRadius: 9, alignSelf: 'flex-start',
     },
-    playBtnText: { color: 'white', fontSize: 13, fontWeight: '700' },
+    playBtnText: { color: 'white', fontSize: 11, fontWeight: '700' },
     myListBtn: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 6,
-      paddingHorizontal: 15,
-      paddingVertical: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
       borderRadius: 10,
       borderWidth: 1,
       borderColor: 'rgba(255,255,255,0.22)',
       backgroundColor: 'rgba(255,255,255,0.1)',
     },
-    myListText: { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
-    heroSlide: { width: HERO_WIDTH, height: 208 },
+    myListText: { color: '#FFFFFF', fontSize: 11, fontWeight: '800' },
+    heroSlide: { width: HERO_WIDTH, height: 170 },
     heroDots: {
       position: 'absolute', alignSelf: 'center', bottom: 15, flexDirection: 'row',
       alignItems: 'center', gap: 6,
@@ -1043,14 +1048,14 @@ export default function HomeScreen({ navigation }) {
             if (nearBottom) loadMoreHomeMedia()
           }}>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12, gap: 10 }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 10, gap: 8 }}>
             {HOME_TABS.map((tab) => (
               <TouchableOpacity
                 key={tab.label}
                 activeOpacity={0.82}
                 onPress={() => handleHomeTabPress(tab)}
                 style={[s.filterChip, activeHomeTab === tab.label && s.filterChipActive]}>
-                <Ionicons name={tab.icon} size={14} color={activeHomeTab === tab.label ? '#FFFFFF' : c.text} />
+                <Ionicons name={tab.icon} size={12} color={activeHomeTab === tab.label ? '#FFFFFF' : c.text} />
                 <Text style={[s.filterChipText, activeHomeTab === tab.label && s.filterChipTextActive]}>
                   {tab.label}
                 </Text>
@@ -1118,25 +1123,14 @@ export default function HomeScreen({ navigation }) {
             </View>
           )}
 
-          {continueWatching.length > 0 && (
-            <View style={{ marginBottom: 22 }}>
-              <SectionHeader title="Continue Watching" onSeeAll={handleOpenMovieCategory} theme={theme} />
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
-                {continueWatching.map((item) => (
-                  <LandscapeCard key={item._id} item={item} onPress={handleMediaPress} theme={theme} />
-                ))}
-              </ScrollView>
-            </View>
-          )}
-
           {trendingMedia.length > 0 && (
             <View style={{ marginBottom: 24 }}>
               <SectionHeader title="Trending Now" accent="🔥" onSeeAll={handleOpenMovieCategory} theme={theme} />
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, columnGap: 6, rowGap: 14 }}>
                 {trendingMedia.map((item) => (
-                  <PosterCard key={item._id} item={item} onPress={handleMediaPress} theme={theme} />
+                  <PosterCard key={item._id} item={item} onPress={handleMediaPress} theme={theme} width={gridPosterWidth} height={gridPosterWidth * 1.38} />
                 ))}
-              </ScrollView>
+              </View>
             </View>
           )}
 
@@ -1146,47 +1140,52 @@ export default function HomeScreen({ navigation }) {
           {liveSectionItems.length > 0 && (
             <View style={{ marginBottom: 24 }}>
               <SectionHeader title="Live Events" accent="● LIVE" onSeeAll={() => setActiveHomeTab('Live')} theme={theme} />
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, columnGap: 8, rowGap: 12 }}>
                 {liveSectionItems.map((item) => (
-                  <LiveCard key={item._id} item={item} onPress={handleMediaPress} theme={theme} />
+                  <View key={item._id} style={{ width: landscapeGridWidth }}>
+                    <LiveCard item={item} onPress={handleMediaPress} theme={theme} />
+                  </View>
                 ))}
-              </ScrollView>
+              </View>
             </View>
           )}
 
           {novelPreviewItems.length > 0 && (
             <View style={{ marginBottom: 24 }}>
               <SectionHeader title="NovelHub" accent="📖" onSeeAll={() => navigation.navigate('NovelHub')} theme={theme} />
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, columnGap: 6, rowGap: 14 }}>
                 {novelPreviewItems.map((item) => (
-                  <DocumentCard key={item._id} item={item} onPress={() => navigation.navigate('NovelHub')} theme={theme} />
+                  <View key={item._id} style={{ width: gridPosterWidth }}>
+                    <DocumentCard item={item} onPress={() => navigation.navigate('NovelHub')} theme={theme} />
+                  </View>
                 ))}
-              </ScrollView>
+              </View>
             </View>
           )}
 
           <View style={{ marginBottom: 24 }}>
             <SectionHeader title="News Highlights" onSeeAll={() => navigation.navigate('DailyNews')} theme={theme} />
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, columnGap: 8, rowGap: 10 }}>
               {newsHighlights.map((item) => (
-                <NewsMiniCard
-                  key={item.title}
-                  title={item.title}
-                  subtitle={item.subtitle}
-                  icon={item.icon}
-                  onPress={() => navigation.navigate('DailyNews')}
-                  theme={theme}
-                />
+                <View key={item.title} style={{ width: landscapeGridWidth }}>
+                  <NewsMiniCard
+                    title={item.title}
+                    subtitle={item.subtitle}
+                    icon={item.icon}
+                    onPress={() => navigation.navigate('DailyNews')}
+                    theme={theme}
+                  />
+                </View>
               ))}
-            </ScrollView>
+            </View>
           </View>
 
           {musicItems.length > 0 && (
             <View style={{ marginBottom: 24 }}>
               <SectionHeader title="Music For You" onSeeAll={() => setActiveHomeTab('Music')} theme={theme} />
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, columnGap: 8, rowGap: 12 }}>
                 {musicItems.map((item) => (
-                  <TouchableOpacity key={item._id} activeOpacity={0.86} onPress={() => handleMediaPress(item)} style={s.musicCard}>
+                  <TouchableOpacity key={item._id} activeOpacity={0.86} onPress={() => handleMediaPress(item)} style={[s.musicCard, { width: landscapeGridWidth, marginRight: 0 }]}>
                     {getThumbnailUri(item) ? (
                       <Image source={{ uri: getThumbnailUri(item) }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
                     ) : (
@@ -1200,7 +1199,7 @@ export default function HomeScreen({ navigation }) {
                     <Text style={s.musicSubtitle}>Playlist</Text>
                   </TouchableOpacity>
                 ))}
-              </ScrollView>
+              </View>
             </View>
           )}
 
@@ -1227,11 +1226,11 @@ export default function HomeScreen({ navigation }) {
                 if (parentNavigation) parentNavigation.navigate('Shorts')
                 else navigation.navigate('Shorts')
               }} theme={theme} />
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, columnGap: 6, rowGap: 14 }}>
                 {shorts.slice(0, 16).map((item) => (
-                  <PosterCard key={item._id} item={item} onPress={handleMediaPress} theme={theme} width={112} height={174} />
+                  <PosterCard key={item._id} item={item} onPress={handleMediaPress} theme={theme} width={gridPosterWidth} height={gridPosterWidth * 1.45} />
                 ))}
-              </ScrollView>
+              </View>
             </View>
           )}
 
@@ -1239,11 +1238,11 @@ export default function HomeScreen({ navigation }) {
             <React.Fragment key={section.genre}>
               <View style={{ marginBottom: 24 }}>
                 <SectionHeader title={section.genre} onSeeAll={handleOpenMovieCategory} theme={theme} />
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, columnGap: 6, rowGap: 14 }}>
                   {section.items.slice(0, 16).map((item) => (
-                    <PosterCard key={item._id} item={item} onPress={handleMediaPress} theme={theme} width={118} height={166} />
+                    <PosterCard key={item._id} item={item} onPress={handleMediaPress} theme={theme} width={gridPosterWidth} height={gridPosterWidth * 1.38} />
                   ))}
-                </ScrollView>
+                </View>
               </View>
               {index === 1 ? <NativeAdvancedAd /> : null}
             </React.Fragment>

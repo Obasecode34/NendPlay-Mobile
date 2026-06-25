@@ -13,6 +13,7 @@ import useThemeStore from '../stores/themeStore'
 import useAuthStore from '../services/authStore.native'
 import { mediaService, downloadService } from '../services/index'
 import { saveDownloadFile, upsertLocalDownloadRecord } from '../services/localDownloadStore'
+import { upsertContinueWatching, removeContinueWatching } from '../services/continueWatchingStore'
 import AdBanner from '../components/ads/AdBanner'
 import NativeAdvancedAd from '../components/ads/NativeAdvancedAd'
 import NendPlayAdCard from '../components/ads/NendPlayAdCard'
@@ -74,6 +75,21 @@ export default function MediaPlayerScreen({ route, navigation }) {
       player.play()
     } catch {}
   }, [playbackUrl, playbackSourceType, localUri])
+
+  useEffect(() => {
+    if (!media?._id || locked || localUri) return undefined
+    const timer = setInterval(() => {
+      try {
+        const position = Number(player.currentTime || 0)
+        const duration = Number(player.duration || media.duration || 0)
+        if (!duration || position < 5) return
+        const progress = position / duration
+        if (progress >= 0.95) removeContinueWatching(media._id)
+        else upsertContinueWatching(media, { position, duration, progress })
+      } catch {}
+    }, 5000)
+    return () => clearInterval(timer)
+  }, [media?._id, locked, localUri, player])
 
   const fetchMedia = async () => {
     setLoading(true)

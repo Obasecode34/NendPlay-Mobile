@@ -11,6 +11,7 @@ import * as ImagePicker from 'expo-image-picker'
 import useThemeStore, { } from '../stores/themeStore'
 import useAuthStore from '../services/authStore.native'
 import { authService, mediaService, notificationService, subscriptionService } from '../services/index'
+import { getContinueWatching } from '../services/continueWatchingStore'
 import { getAllThemes } from '../theme/themes'
 import AdBanner from '../components/ads/AdBanner'
 import NativeAdvancedAd from '../components/ads/NativeAdvancedAd'
@@ -39,6 +40,7 @@ export default function ProfileScreen({ navigation }) {
     newPassword: '',
   })
   const [savedMedia, setSavedMedia] = useState([])
+  const [continueWatching, setContinueWatching] = useState([])
   const [savedLoading, setSavedLoading] = useState(true)
   const [savedPage, setSavedPage] = useState(1)
   const [savedHasMore, setSavedHasMore] = useState(false)
@@ -71,10 +73,19 @@ export default function ProfileScreen({ navigation }) {
     if (activeTab === 'saved' && isAuthenticated) {
       fetchSavedMedia(1, false)
     }
+    if (activeTab === 'continue') {
+      fetchContinueWatching()
+    }
   }, [activeTab, isAuthenticated])
   useEffect(() => {
     if (isAuthenticated) fetchNotifications(false)
   }, [isAuthenticated])
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener?.('focus', fetchContinueWatching)
+    fetchContinueWatching()
+    return unsubscribe
+  }, [navigation])
 
   const fetchSubscription = async () => {
     if (!isAuthenticated) {
@@ -85,6 +96,15 @@ export default function ProfileScreen({ navigation }) {
       const res = await subscriptionService.getMySubscription()
       setSubscription(res.data.data)
     } catch {} finally { setLoading(false) }
+  }
+
+  const fetchContinueWatching = async () => {
+    const items = await getContinueWatching()
+    setContinueWatching(items)
+  }
+
+  const openContinueItem = (item) => {
+    navigation.navigate('MediaPlayer', { mediaId: item._id })
   }
 
   const fetchSavedMedia = async (pageToLoad = 1, append = false) => {
@@ -353,9 +373,9 @@ export default function ProfileScreen({ navigation }) {
       borderRadius: 20, marginTop: 8,
     },
     planText: { fontSize: 12, fontWeight: '700' },
-    tabs: { flexDirection: 'row', padding: 16, gap: 8 },
+    tabs: { flexDirection: 'row', flexWrap: 'wrap', padding: 16, gap: 8 },
     tab: {
-      flex: 1, paddingVertical: 9, borderRadius: 10,
+      minWidth: '30%', flexGrow: 1, paddingVertical: 9, borderRadius: 10,
       alignItems: 'center', borderWidth: 1,
     },
     tabText: { fontSize: 13, fontWeight: '600' },
@@ -472,6 +492,41 @@ export default function ProfileScreen({ navigation }) {
           <AdBanner style={s.adUnit} horizontalPadding={64} />
           <NendPlayAdCard placement="profile" style={s.adUnit} />
           <NativeAdvancedAd style={s.adUnit} />
+
+          <View style={[s.section, { padding: 14 }]}>
+            <Text style={{ color: c.text, fontSize: 16, fontWeight: '900', marginBottom: 8 }}>
+              Continue Watching
+            </Text>
+            {continueWatching.length === 0 ? (
+              <Text style={{ color: c.textMuted, fontSize: 12 }}>
+                Start watching media and unfinished items will appear here.
+              </Text>
+            ) : (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+                {continueWatching.map((item) => (
+                  <TouchableOpacity
+                    key={item._id}
+                    activeOpacity={0.86}
+                    onPress={() => openContinueItem(item)}
+                    style={{ width: '48%', borderRadius: 12, overflow: 'hidden', backgroundColor: c.bg, borderWidth: 1, borderColor: c.border }}>
+                    <View style={{ height: 86, backgroundColor: c.surfaceHigh }}>
+                      {item.thumbnailUrl ? (
+                        <Image source={{ uri: item.thumbnailUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                      ) : (
+                        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                          <Ionicons name="play-circle" size={28} color={c.primary} />
+                        </View>
+                      )}
+                    </View>
+                    <View style={{ padding: 9 }}>
+                      <Text numberOfLines={2} style={{ color: c.text, fontSize: 12, fontWeight: '900' }}>{item.title}</Text>
+                      <Text style={{ color: c.textMuted, fontSize: 11, marginTop: 4 }}>{Math.round((item.progress || 0) * 100)}% watched</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
 
           {activeTab === 'themes' && (
             <View style={[s.section, { padding: 14 }]}>
@@ -593,7 +648,7 @@ export default function ProfileScreen({ navigation }) {
 
       {/* Tabs */}
       <View style={s.tabs}>
-        {['account', 'saved', 'themes', 'about'].map((tab) => (
+        {['account', 'continue', 'saved', 'themes', 'about'].map((tab) => (
           <TouchableOpacity
             key={tab}
             style={[s.tab, {
@@ -749,6 +804,51 @@ export default function ProfileScreen({ navigation }) {
               <Text style={s.logoutText}>Logout</Text>
             </TouchableOpacity>
           </>
+        )}
+
+        {activeTab === 'continue' && (
+          <View style={[s.section, { padding: 14 }]}>
+            <Text style={{ color: c.text, fontSize: 16, fontWeight: '900', marginBottom: 6 }}>
+              Continue Watching
+            </Text>
+            <Text style={{ color: c.textMuted, fontSize: 12, marginBottom: 12 }}>
+              Unfinished media appears here automatically.
+            </Text>
+            {continueWatching.length === 0 ? (
+              <Text style={{ color: c.textMuted, textAlign: 'center', paddingVertical: 24 }}>
+                No unfinished media yet.
+              </Text>
+            ) : (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+                {continueWatching.map((item) => (
+                  <TouchableOpacity
+                    key={item._id}
+                    activeOpacity={0.86}
+                    onPress={() => openContinueItem(item)}
+                    style={{ width: '48%', borderRadius: 12, overflow: 'hidden', backgroundColor: c.bg, borderWidth: 1, borderColor: c.border }}>
+                    <View style={{ height: 86, backgroundColor: c.surfaceHigh }}>
+                      {item.thumbnailUrl ? (
+                        <Image source={{ uri: item.thumbnailUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                      ) : (
+                        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                          <Ionicons name="play-circle" size={28} color={c.primary} />
+                        </View>
+                      )}
+                      <View style={{ position: 'absolute', left: 8, right: 8, bottom: 8, height: 4, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.26)' }}>
+                        <View style={{ width: `${Math.round((item.progress || 0) * 100)}%`, height: 4, borderRadius: 4, backgroundColor: c.primary }} />
+                      </View>
+                    </View>
+                    <View style={{ padding: 9 }}>
+                      <Text numberOfLines={2} style={{ color: c.text, fontSize: 12, fontWeight: '900' }}>{item.title}</Text>
+                      <Text style={{ color: c.textMuted, fontSize: 11, marginTop: 4 }}>
+                        {Math.round((item.progress || 0) * 100)}% watched
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
         )}
 
         {activeTab === 'saved' && (
