@@ -70,6 +70,26 @@ function sourceInitial(source = 'N') {
   return source.trim().charAt(0).toUpperCase() || 'N'
 }
 
+function estimateReadTime(item = {}) {
+  const text = [item.header, item.title, item.subHeader, item.summary, item.body]
+    .filter(Boolean)
+    .join(' ')
+  const words = text.trim().split(/\s+/).filter(Boolean).length
+  return `${Math.max(1, Math.ceil(words / 220))} min read`
+}
+
+function formatDate(value) {
+  const date = value ? new Date(value) : new Date()
+  if (Number.isNaN(date.getTime())) return 'Today'
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+function storyCategory(item = {}) {
+  const categories = item.categories || item.category || item.tab
+  const value = Array.isArray(categories) ? categories[0] : categories
+  return String(value || item.section || 'News').replace(/-/g, ' ')
+}
+
 function SourceRow({ item }) {
   return (
     <View style={styles.sourceRow}>
@@ -90,21 +110,48 @@ function MoreButton() {
 }
 
 function HeroStory({ item, onPress }) {
+  const imageUrl = item.imageUrl || item.coverImage || item.thumbnailUrl
+  const excerpt = item.subHeader || item.summary || item.body || ''
+
   return (
-    <TouchableOpacity activeOpacity={0.88} onPress={() => onPress(item)} style={styles.heroStory}>
-      {item.imageUrl ? (
-        <Image source={{ uri: item.imageUrl }} style={styles.heroImage} resizeMode="cover" />
-      ) : (
-        <View style={[styles.heroImage, styles.emptyImage]}>
-          <Ionicons name="newspaper-outline" size={46} color={BLUE} />
+    <TouchableOpacity activeOpacity={0.9} onPress={() => onPress(item)} style={styles.newsCard}>
+      <View style={styles.newsImageWrap}>
+        {imageUrl ? (
+          <Image source={{ uri: imageUrl }} style={styles.newsImage} resizeMode="cover" />
+        ) : (
+          <View style={[styles.newsImage, styles.emptyImage]}>
+            <Ionicons name="newspaper-outline" size={46} color={BLUE} />
+          </View>
+        )}
+        <View style={styles.categoryPill}>
+          <Text style={styles.categoryPillText} numberOfLines={1}>{storyCategory(item)}</Text>
         </View>
-      )}
-      <View style={styles.storyBody}>
-        <SourceRow item={item} />
-        <Text style={styles.heroTitle} numberOfLines={3}>{item.title}</Text>
-        <View style={styles.metaRow}>
-          <Text style={styles.timeText}>{timeAgo(item.publishedAt)}</Text>
-          <MoreButton />
+      </View>
+
+      <View style={styles.newsCardBody}>
+        <View style={styles.newsMetaRow}>
+          <View style={styles.newsMetaItem}>
+            <Ionicons name="calendar-outline" size={16} color="#5F6B7A" />
+            <Text style={styles.newsMetaText}>{formatDate(item.publishedAt || item.createdAt)}</Text>
+          </View>
+          <Text style={styles.newsMetaDot}>•</Text>
+          <View style={styles.newsMetaItem}>
+            <Ionicons name="time-outline" size={16} color="#5F6B7A" />
+            <Text style={styles.newsMetaText}>{estimateReadTime(item)}</Text>
+          </View>
+        </View>
+
+        <Text style={styles.newsCardTitle} numberOfLines={3}>{item.header || item.title}</Text>
+        {excerpt ? <Text style={styles.newsCardExcerpt} numberOfLines={3}>{excerpt}</Text> : null}
+
+        <View style={styles.newsFooter}>
+          <View style={styles.readMoreRow}>
+            <Text style={styles.readMoreText}>Read more</Text>
+            <Ionicons name="arrow-forward" size={22} color="#1354C8" />
+          </View>
+          <TouchableOpacity activeOpacity={0.75} style={styles.bookmarkButton}>
+            <Ionicons name="bookmark-outline" size={24} color="#4B5563" />
+          </TouchableOpacity>
         </View>
       </View>
     </TouchableOpacity>
@@ -112,21 +159,7 @@ function HeroStory({ item, onPress }) {
 }
 
 function CompactStory({ item, onPress }) {
-  return (
-    <TouchableOpacity activeOpacity={0.85} onPress={() => onPress(item)} style={styles.compactStory}>
-      <View style={{ flex: 1, paddingRight: 12 }}>
-        <SourceRow item={item} />
-        <Text style={styles.compactTitle} numberOfLines={3}>{item.title}</Text>
-        <View style={styles.metaRow}>
-          <Text style={styles.timeText}>{timeAgo(item.publishedAt)}</Text>
-          <MoreButton />
-        </View>
-      </View>
-      {item.imageUrl ? (
-        <Image source={{ uri: item.imageUrl }} style={styles.thumbImage} resizeMode="cover" />
-      ) : null}
-    </TouchableOpacity>
-  )
+  return <HeroStory item={item} onPress={onPress} />
 }
 
 function RelatedRail({ items, onPress }) {
@@ -536,6 +569,71 @@ const styles = StyleSheet.create({
   categoryHeader: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 10 },
   categoryTitle: { color: TEXT, fontSize: 24, fontWeight: '800' },
   categorySub: { color: MUTED, fontSize: 12, marginTop: 4 },
+  newsCard: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 10,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.16,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 7,
+  },
+  newsImageWrap: {
+    height: 218,
+    backgroundColor: '#DDE3EA',
+    position: 'relative',
+  },
+  newsImage: { width: '100%', height: '100%' },
+  categoryPill: {
+    position: 'absolute',
+    top: 18,
+    left: 18,
+    maxWidth: '70%',
+    paddingHorizontal: 18,
+    paddingVertical: 9,
+    borderRadius: 999,
+    backgroundColor: BLUE,
+  },
+  categoryPillText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  newsCardBody: { padding: 20 },
+  newsMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 14 },
+  newsMetaItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  newsMetaText: { color: '#5F6B7A', fontSize: 13, fontWeight: '700' },
+  newsMetaDot: { color: '#5F6B7A', fontSize: 16, fontWeight: '900' },
+  newsCardTitle: {
+    color: '#07162B',
+    fontSize: 25,
+    lineHeight: 32,
+    fontWeight: '900',
+  },
+  newsCardExcerpt: {
+    color: '#64748B',
+    fontSize: 15,
+    lineHeight: 24,
+    marginTop: 14,
+  },
+  newsFooter: {
+    marginTop: 18,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  readMoreRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  readMoreText: { color: '#1354C8', fontSize: 16, fontWeight: '900' },
+  bookmarkButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   heroStory: { paddingHorizontal: 16, paddingBottom: 15 },
   heroImage: { width: '100%', height: 158, borderRadius: 13, backgroundColor: '#DDE3EA' },
   emptyImage: { alignItems: 'center', justifyContent: 'center' },

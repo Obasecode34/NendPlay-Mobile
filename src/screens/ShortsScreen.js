@@ -12,6 +12,7 @@ import useThemeStore from '../stores/themeStore'
 import useAuthStore from '../services/authStore.native'
 import { downloadService, mediaService } from '../services/index'
 import { saveDownloadFile, upsertLocalDownloadRecord } from '../services/localDownloadStore'
+import { addWatchHistory } from '../services/watchHistoryStore'
 import AdBanner from '../components/ads/AdBanner'
 import NativeAdvancedAd from '../components/ads/NativeAdvancedAd'
 import NendPlayAdCard from '../components/ads/NendPlayAdCard'
@@ -131,7 +132,10 @@ function ShortItem({ item, isActive, theme, itemHeight, onPausedChange, onEnded 
 
   useEffect(() => {
     const subscription = player.addListener?.('playToEnd', () => {
-      if (isActive) onEnded?.()
+      if (isActive) {
+        addWatchHistory(item, { duration: item.duration || player.duration || 0 })
+        onEnded?.()
+      }
     })
     return () => subscription?.remove?.()
   }, [isActive, onEnded, player])

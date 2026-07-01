@@ -1,5 +1,5 @@
 // src/screens/MediaPlayerScreen.js
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   View, Text, TouchableOpacity, StyleSheet,
   ScrollView, ActivityIndicator, Alert,
@@ -14,6 +14,7 @@ import useAuthStore from '../services/authStore.native'
 import { mediaService, downloadService } from '../services/index'
 import { saveDownloadFile, upsertLocalDownloadRecord } from '../services/localDownloadStore'
 import { upsertContinueWatching, removeContinueWatching } from '../services/continueWatchingStore'
+import { addWatchHistory } from '../services/watchHistoryStore'
 import AdBanner from '../components/ads/AdBanner'
 import NativeAdvancedAd from '../components/ads/NativeAdvancedAd'
 import NendPlayAdCard from '../components/ads/NendPlayAdCard'
@@ -54,6 +55,7 @@ export default function MediaPlayerScreen({ route, navigation }) {
   const [loading, setLoading] = useState(true)
   const [locked, setLocked] = useState(false)
   const [liked, setLiked] = useState(false)
+  const historyRecordedRef = useRef(false)
 
   useEffect(() => {
     if (localUri) {
@@ -77,6 +79,10 @@ export default function MediaPlayerScreen({ route, navigation }) {
   }, [playbackUrl, playbackSourceType, localUri])
 
   useEffect(() => {
+    historyRecordedRef.current = false
+  }, [media?._id, localUri])
+
+  useEffect(() => {
     if (!media?._id || locked || localUri) return undefined
     const timer = setInterval(() => {
       try {
@@ -84,8 +90,15 @@ export default function MediaPlayerScreen({ route, navigation }) {
         const duration = Number(player.duration || media.duration || 0)
         if (!duration || position < 5) return
         const progress = position / duration
-        if (progress >= 0.95) removeContinueWatching(media._id)
-        else upsertContinueWatching(media, { position, duration, progress })
+        if (progress >= 0.95) {
+          removeContinueWatching(media._id)
+          if (!historyRecordedRef.current) {
+            historyRecordedRef.current = true
+            addWatchHistory(media, { position, duration })
+          }
+        } else {
+          upsertContinueWatching(media, { position, duration, progress })
+        }
       } catch {}
     }, 5000)
     return () => clearInterval(timer)

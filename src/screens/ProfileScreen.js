@@ -12,12 +12,24 @@ import useThemeStore, { } from '../stores/themeStore'
 import useAuthStore from '../services/authStore.native'
 import { authService, mediaService, notificationService, subscriptionService } from '../services/index'
 import { getContinueWatching } from '../services/continueWatchingStore'
+import { clearWatchHistoryByDays, getWatchHistory } from '../services/watchHistoryStore'
 import { getAllThemes } from '../theme/themes'
 import AdBanner from '../components/ads/AdBanner'
 import NativeAdvancedAd from '../components/ads/NativeAdvancedAd'
 import NendPlayAdCard from '../components/ads/NendPlayAdCard'
 
 const PROFILE_PAGE_LIMIT = 20
+const HISTORY_DELETE_OPTIONS = [
+  { value: '1', label: '1 day' },
+  { value: '7', label: '7 days' },
+  { value: '30', label: '30 days' },
+  { value: '90', label: '90 days' },
+  { value: 'all', label: 'All' },
+]
+
+function isShortHistoryItem(item) {
+  return item?.type === 'short' || item?.type === 'shorts' || item?.isShort
+}
 
 export default function ProfileScreen({ navigation }) {
   const { theme, setTheme, activeThemeId } = useThemeStore()
@@ -41,6 +53,8 @@ export default function ProfileScreen({ navigation }) {
   })
   const [savedMedia, setSavedMedia] = useState([])
   const [continueWatching, setContinueWatching] = useState([])
+  const [watchHistory, setWatchHistory] = useState([])
+  const [historyDeleteDays, setHistoryDeleteDays] = useState('7')
   const [savedLoading, setSavedLoading] = useState(true)
   const [savedPage, setSavedPage] = useState(1)
   const [savedHasMore, setSavedHasMore] = useState(false)
@@ -76,14 +90,21 @@ export default function ProfileScreen({ navigation }) {
     if (activeTab === 'continue') {
       fetchContinueWatching()
     }
+    if (activeTab === 'history') {
+      fetchWatchHistory()
+    }
   }, [activeTab, isAuthenticated])
   useEffect(() => {
     if (isAuthenticated) fetchNotifications(false)
   }, [isAuthenticated])
 
   useEffect(() => {
-    const unsubscribe = navigation.addListener?.('focus', fetchContinueWatching)
+    const unsubscribe = navigation.addListener?.('focus', () => {
+      fetchContinueWatching()
+      fetchWatchHistory()
+    })
     fetchContinueWatching()
+    fetchWatchHistory()
     return unsubscribe
   }, [navigation])
 
@@ -103,7 +124,20 @@ export default function ProfileScreen({ navigation }) {
     setContinueWatching(items)
   }
 
+  const fetchWatchHistory = async () => {
+    const items = await getWatchHistory()
+    setWatchHistory(items)
+  }
+
   const openContinueItem = (item) => {
+    navigation.navigate('MediaPlayer', { mediaId: item._id })
+  }
+
+  const openHistoryItem = (item) => {
+    if (isShortHistoryItem(item)) {
+      navigation.navigate('Shorts', { openId: item._id })
+      return
+    }
     navigation.navigate('MediaPlayer', { mediaId: item._id })
   }
 
@@ -303,6 +337,61 @@ export default function ProfileScreen({ navigation }) {
       { text: 'Cancel', style: 'cancel' },
       { text: 'Logout', style: 'destructive', onPress: async () => { await logout() } },
     ])
+  }
+
+  const handleClearHistory = () => {
+    const label = historyDeleteDays === 'all'
+      ? 'all watch history'
+      : `watch history from the last ${historyDeleteDays} day${historyDeleteDays === '1' ? '' : 's'}`
+    Alert.alert('Delete Watch History', `Delete ${label}?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          const remaining = await clearWatchHistoryByDays(historyDeleteDays)
+          setWatchHistory(remaining)
+        },
+      },
+    ])
+  }
+
+  const renderHistoryCards = (items, emptyText) => {
+    if (!items.length) {
+      return (
+        <Text style={{ color: c.textMuted, fontSize: 12, paddingVertical: 12 }}>
+          {emptyText}
+        </Text>
+      )
+    }
+
+    return (
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+        {items.map((item) => (
+          <TouchableOpacity
+            key={item._id}
+            activeOpacity={0.86}
+            onPress={() => openHistoryItem(item)}
+            style={{ width: '48%', borderRadius: 12, overflow: 'hidden', backgroundColor: c.bg, borderWidth: 1, borderColor: c.border }}>
+            <View style={{ height: 86, backgroundColor: c.surfaceHigh }}>
+              {item.thumbnailUrl ? (
+                <Image source={{ uri: item.thumbnailUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+              ) : (
+                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="checkmark-circle" size={28} color={c.primary} />
+                </View>
+              )}
+            </View>
+            <View style={{ padding: 9 }}>
+              <Text numberOfLines={2} style={{ color: c.text, fontSize: 12, fontWeight: '900' }}>{item.title}</Text>
+              <Text style={{ color: c.textMuted, fontSize: 11, marginTop: 4 }}>
+                {item.watchedAt ? new Date(item.watchedAt).toLocaleDateString() : 'Watched'}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        ))}
+      </View>
+    )
   }
 
   const s = StyleSheet.create({
@@ -528,6 +617,43 @@ export default function ProfileScreen({ navigation }) {
             )}
           </View>
 
+          <View style={[s.section, { padding: 14 }]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <View>
+                <Text style={{ color: c.text, fontSize: 16, fontWeight: '900' }}>
+                  Watch History
+                </Text>
+                <Text style={{ color: c.textMuted, fontSize: 12 }}>Completed movies and Shorts</Text>
+              </View>
+              <TouchableOpacity onPress={handleClearHistory} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: c.surfaceHigh }}>
+                <Text style={{ color: c.text, fontSize: 12, fontWeight: '900' }}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+              {HISTORY_DELETE_OPTIONS.map((option) => (
+                <TouchableOpacity
+                  key={option.value}
+                  onPress={() => setHistoryDeleteDays(option.value)}
+                  style={{
+                    paddingHorizontal: 10,
+                    paddingVertical: 6,
+                    borderRadius: 999,
+                    backgroundColor: historyDeleteDays === option.value ? c.primary : c.bg,
+                    borderWidth: 1,
+                    borderColor: historyDeleteDays === option.value ? c.primary : c.border,
+                  }}>
+                  <Text style={{ color: historyDeleteDays === option.value ? '#FFFFFF' : c.textMuted, fontSize: 11, fontWeight: '800' }}>
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={{ color: c.text, fontSize: 13, fontWeight: '900', marginBottom: 8 }}>Movies</Text>
+            {renderHistoryCards(watchHistory.filter((item) => !isShortHistoryItem(item)), 'No completed movies yet.')}
+            <Text style={{ color: c.text, fontSize: 13, fontWeight: '900', marginTop: 16, marginBottom: 8 }}>Shorts</Text>
+            {renderHistoryCards(watchHistory.filter(isShortHistoryItem), 'No completed Shorts yet.')}
+          </View>
+
           {activeTab === 'themes' && (
             <View style={[s.section, { padding: 14 }]}>
               <Text style={{ color: c.text, fontSize: 16, fontWeight: '900', marginBottom: 12 }}>
@@ -648,7 +774,7 @@ export default function ProfileScreen({ navigation }) {
 
       {/* Tabs */}
       <View style={s.tabs}>
-        {['account', 'continue', 'saved', 'themes', 'about'].map((tab) => (
+        {['account', 'continue', 'history', 'saved', 'themes', 'about'].map((tab) => (
           <TouchableOpacity
             key={tab}
             style={[s.tab, {
@@ -848,6 +974,54 @@ export default function ProfileScreen({ navigation }) {
                 ))}
               </View>
             )}
+          </View>
+        )}
+
+        {activeTab === 'history' && (
+          <View style={[s.section, { padding: 14 }]}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <View>
+                <Text style={{ color: c.text, fontSize: 16, fontWeight: '900' }}>
+                  Watch History
+                </Text>
+                <Text style={{ color: c.textMuted, fontSize: 12 }}>
+                  {watchHistory.length} completed item{watchHistory.length === 1 ? '' : 's'}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={handleClearHistory} style={[s.primaryBtn, { paddingHorizontal: 14, paddingVertical: 9 }]}>
+                <Ionicons name="trash-outline" size={15} color="#FFFFFF" />
+                <Text style={s.primaryBtnText}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={{ color: c.textMuted, fontSize: 12, marginBottom: 8 }}>
+              Delete selected recent history:
+            </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+              {HISTORY_DELETE_OPTIONS.map((option) => (
+                <TouchableOpacity
+                  key={option.value}
+                  onPress={() => setHistoryDeleteDays(option.value)}
+                  style={{
+                    paddingHorizontal: 10,
+                    paddingVertical: 7,
+                    borderRadius: 999,
+                    backgroundColor: historyDeleteDays === option.value ? c.primary : c.bg,
+                    borderWidth: 1,
+                    borderColor: historyDeleteDays === option.value ? c.primary : c.border,
+                  }}>
+                  <Text style={{ color: historyDeleteDays === option.value ? '#FFFFFF' : c.textMuted, fontSize: 11, fontWeight: '800' }}>
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={{ color: c.text, fontSize: 14, fontWeight: '900', marginBottom: 8 }}>Movies</Text>
+            {renderHistoryCards(watchHistory.filter((item) => !isShortHistoryItem(item)), 'No completed movies yet.')}
+
+            <Text style={{ color: c.text, fontSize: 14, fontWeight: '900', marginTop: 18, marginBottom: 8 }}>Shorts</Text>
+            {renderHistoryCards(watchHistory.filter(isShortHistoryItem), 'No completed Shorts yet.')}
           </View>
         )}
 
