@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   View, Text, TouchableOpacity, StyleSheet,
   ScrollView, ActivityIndicator, Alert,
-  Dimensions, StatusBar, Image, Share,
+  Dimensions, StatusBar, Image, Share, Pressable, PanResponder, Switch,
 } from 'react-native'
 import { VideoView, useVideoPlayer } from 'expo-video'
 import { Ionicons } from '@expo/vector-icons'
@@ -26,7 +26,7 @@ function getCollectionLabel(item = {}) {
   if (item.collectionType === 'series_episode') {
     const season = item.seasonNumber !== null && item.seasonNumber !== undefined ? `S${item.seasonNumber}` : 'Season'
     const episode = item.episodeNumber !== null && item.episodeNumber !== undefined ? `E${item.episodeNumber}` : 'Episode'
-    return `${season}:${episode}${item.episodeTitle ? ` · ${item.episodeTitle}` : ''}`
+    return `${season}:${episode}${item.episodeTitle ? ` - ${item.episodeTitle}` : ''}`
   }
   if (item.collectionType === 'movie_part') return `Part ${item.partNumber || ''}`.trim()
   return item.title || 'Media'
@@ -55,6 +55,17 @@ export default function MediaPlayerScreen({ route, navigation }) {
   const [loading, setLoading] = useState(true)
   const [locked, setLocked] = useState(false)
   const [liked, setLiked] = useState(false)
+  const [controlsVisible, setControlsVisible] = useState(true)
+  const [playing, setPlaying] = useState(true)
+  const [position, setPosition] = useState(0)
+  const [duration, setDuration] = useState(0)
+  const [progressWidth, setProgressWidth] = useState(1)
+  const [overlayHint, setOverlayHint] = useState('Double tap left or right\nto rewind or forward')
+  const [volume, setVolume] = useState(1)
+  const [brightness, setBrightness] = useState(0.72)
+  const [detailsTab, setDetailsTab] = useState('overview')
+  const [autoPlayNext, setAutoPlayNext] = useState(true)
+  const lastTapRef = useRef({ side: null, time: 0 })
   const historyRecordedRef = useRef(false)
 
   useEffect(() => {
@@ -103,6 +114,24 @@ export default function MediaPlayerScreen({ route, navigation }) {
     }, 5000)
     return () => clearInterval(timer)
   }, [media?._id, locked, localUri, player])
+
+  useEffect(() => {
+    if (locked) return undefined
+    const timer = setInterval(() => {
+      try {
+        setPosition(Number(player.currentTime || 0))
+        setDuration(Number(player.duration || media?.duration || 0))
+        setPlaying(Boolean(player.playing))
+      } catch {}
+    }, 500)
+    return () => clearInterval(timer)
+  }, [locked, media?.duration, player, streamUrl])
+
+  useEffect(() => {
+    if (!overlayHint) return undefined
+    const timer = setTimeout(() => setOverlayHint(''), 1800)
+    return () => clearTimeout(timer)
+  }, [overlayHint])
 
   const fetchMedia = async () => {
     setLoading(true)
@@ -209,10 +238,86 @@ export default function MediaPlayerScreen({ route, navigation }) {
     } catch {}
   }
 
-  const formatTime = (ms) => {
-    const totalSecs = Math.floor(ms / 1000)
-    const m = Math.floor(totalSecs / 60)
+  const flashHint = (message) => {
+    setOverlayHint(message)
+  }
+
+  const seekBy = (seconds) => {
+    try {
+      const next = Math.max(0, Math.min(Number(player.duration || duration || 0) || Infinity, Number(player.currentTime || 0) + seconds))
+      player.currentTime = next
+      setPosition(next)
+      flashHint(seconds > 0 ? '+10 seconds' : '-10 seconds')
+    } catch {}
+  }
+
+  const togglePlay = () => {
+    try {
+      if (playing) {
+        player.pause()
+        setPlaying(false)
+        return
+      }
+      player.play()
+      setPlaying(true)
+    } catch {}
+  }
+
+  const seekToRatio = (x) => {
+    if (!duration) return
+    const ratio = Math.max(0, Math.min(1, x / progressWidth))
+    const next = ratio * duration
+    try {
+      player.currentTime = next
+      setPosition(next)
+    } catch {}
+  }
+
+  const handlePlayerTap = (side) => {
+    const now = Date.now()
+    if (lastTapRef.current.side === side && now - lastTapRef.current.time < 360) {
+      seekBy(side === 'left' ? -10 : 10)
+      lastTapRef.current = { side: null, time: 0 }
+      return
+    }
+    lastTapRef.current = { side, time: now }
+    setControlsVisible((value) => !value)
+  }
+
+  const panResponder = PanResponder.create({
+    onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dx) > 18 || Math.abs(gesture.dy) > 18,
+    onPanResponderRelease: (_, gesture) => {
+      if (Math.abs(gesture.dx) > Math.abs(gesture.dy)) {
+        const seconds = gesture.dx > 0 ? 10 : -10
+        seekBy(seconds)
+        return
+      }
+      const next = Math.max(0, Math.min(1, volume + (gesture.dy < 0 ? 0.1 : -0.1)))
+      setVolume(next)
+      try { player.volume = next } catch {}
+      setBrightness(Math.max(0.2, Math.min(1, brightness + (gesture.dy < 0 ? 0.08 : -0.08))))
+      flashHint(`Volume ${Math.round(next * 100)}%`)
+    },
+  })
+
+  const openCollectionItem = (item) => {
+    if (!item?._id || item._id === mediaId) return
+    navigation.push('MediaPlayer', { mediaId: item._id })
+  }
+
+  const playNextCollectionItem = () => {
+    if (collectionItems.length <= 1) return
+    const currentIndex = collectionItems.findIndex((item) => item._id === mediaId)
+    const next = collectionItems[currentIndex >= 0 ? (currentIndex + 1) % collectionItems.length : 0]
+    openCollectionItem(next)
+  }
+
+  const formatTime = (seconds = 0) => {
+    const totalSecs = Math.max(0, Math.floor(seconds || 0))
+    const h = Math.floor(totalSecs / 3600)
+    const m = Math.floor((totalSecs % 3600) / 60)
     const s = totalSecs % 60
+    if (h) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
     return `${m}:${s.toString().padStart(2, '0')}`
   }
 
@@ -231,6 +336,67 @@ export default function MediaPlayerScreen({ route, navigation }) {
       width, height: width * 9 / 16,
       backgroundColor: '#000',
     },
+    playerShell: { backgroundColor: '#000' },
+    playerTop: {
+      flexDirection: 'row', alignItems: 'center', gap: 12,
+      paddingTop: insets.top + 8, paddingHorizontal: 14, paddingBottom: 10,
+      backgroundColor: '#000',
+    },
+    playerTitle: { flex: 1, color: '#FFFFFF', fontSize: 15, fontWeight: '900' },
+    playerOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      justifyContent: 'space-between',
+      padding: 14,
+      backgroundColor: 'rgba(0,0,0,0.28)',
+    },
+    railWrap: {
+      width: 58,
+      paddingVertical: 10,
+      borderRadius: 22,
+      backgroundColor: 'rgba(0,0,0,0.48)',
+      alignItems: 'center',
+      gap: 8,
+    },
+    rail: {
+      width: 4, height: 112, borderRadius: 4,
+      backgroundColor: 'rgba(255,255,255,0.42)',
+      justifyContent: 'flex-end',
+      overflow: 'hidden',
+    },
+    railFill: { width: '100%', backgroundColor: c.primary, borderRadius: 4 },
+    centerControls: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 24,
+    },
+    roundControl: {
+      width: 72, height: 72, borderRadius: 36,
+      borderWidth: 2, borderColor: '#FFFFFF',
+      backgroundColor: 'rgba(0,0,0,0.28)',
+      alignItems: 'center', justifyContent: 'center',
+    },
+    hintBubble: {
+      alignSelf: 'center',
+      marginTop: 12,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      borderRadius: 14,
+      backgroundColor: c.primary,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    playerToolBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-around',
+      paddingVertical: 13,
+      backgroundColor: '#000',
+      borderBottomWidth: 1,
+      borderBottomColor: c.border,
+    },
+    toolText: { color: '#FFFFFF', fontSize: 11, fontWeight: '800', marginTop: 4 },
     lockedBox: {
       width, height: width * 9 / 16, backgroundColor: c.surface,
       alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -258,9 +424,9 @@ export default function MediaPlayerScreen({ route, navigation }) {
     },
     progressFill: { height: '100%', backgroundColor: c.primary, borderRadius: 2 },
     info: { padding: 16 },
-    title: { color: c.text, fontSize: 20, fontWeight: '800', marginBottom: 4 },
+    title: { color: c.text, fontSize: 22, fontWeight: '900', marginBottom: 6 },
     meta: { color: c.textMuted, fontSize: 13, marginBottom: 16 },
-    actions: { flexDirection: 'row', gap: 10, marginBottom: 16 },
+    actions: { flexDirection: 'row', gap: 10, marginBottom: 16, flexWrap: 'wrap' },
     adStack: { marginBottom: 16 },
     adUnit: { marginHorizontal: 0 },
     actionBtn: {
@@ -270,6 +436,32 @@ export default function MediaPlayerScreen({ route, navigation }) {
     },
     actionBtnText: { color: c.textMuted, fontSize: 13, fontWeight: '500' },
     description: { color: c.textMuted, fontSize: 14, lineHeight: 20 },
+    tabRow: {
+      flexDirection: 'row',
+      borderTopWidth: 1,
+      borderBottomWidth: 1,
+      borderColor: c.border,
+      marginTop: 10,
+      marginBottom: 14,
+    },
+    detailTab: { paddingVertical: 13, marginRight: 26 },
+    detailTabText: { fontSize: 14, fontWeight: '900' },
+    twoColInfo: {
+      borderLeftWidth: 1,
+      borderLeftColor: c.border,
+      paddingLeft: 16,
+      gap: 11,
+    },
+    poster: {
+      width: 140,
+      height: 86,
+      borderRadius: 12,
+      backgroundColor: c.surface,
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    rowTitle: { color: c.text, fontSize: 17, fontWeight: '900' },
     collectionTitle: { color: c.text, fontSize: 17, fontWeight: '900', marginTop: 24, marginBottom: 12 },
     episodeCard: {
       flexDirection: 'row', gap: 12, padding: 10, borderRadius: 14,
@@ -278,11 +470,363 @@ export default function MediaPlayerScreen({ route, navigation }) {
     episodeThumb: { width: 96, height: 54, borderRadius: 10, backgroundColor: c.surfaceHigh, overflow: 'hidden' },
     episodeTitle: { color: c.text, fontSize: 14, fontWeight: '900' },
     episodeMeta: { color: c.textMuted, fontSize: 12, marginTop: 4 },
+    bottomMini: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      borderTopWidth: 1,
+      borderTopColor: c.border,
+      backgroundColor: c.bgDeep,
+    },
   })
 
   if (loading) return (
     <View style={[s.container, { alignItems: 'center', justifyContent: 'center' }]}>
       <ActivityIndicator color={c.primary} size="large" />
+    </View>
+  )
+
+  const progressPercent = duration ? Math.max(0, Math.min(100, (position / duration) * 100)) : 0
+  const thumbnailUri = media ? mediaService.getThumbnailUrl(media) || media.thumbnailUrl || '' : ''
+  const nextUp = collectionItems.find((item) => item._id !== mediaId) || collectionItems[0]
+  const moreLikeThis = collectionItems.filter((item) => item._id !== mediaId).slice(0, 8)
+  const genreText = Array.isArray(media?.genres) && media.genres.length
+    ? media.genres.slice(0, 3).join(', ')
+    : media?.genre || media?.category || 'Entertainment'
+  const castText = Array.isArray(media?.cast) && media.cast.length
+    ? media.cast.join(', ')
+    : media?.artist || 'NendPlay Creators'
+
+  return (
+    <View style={s.container}>
+      <StatusBar hidden />
+
+      <View style={s.playerShell}>
+        <View style={s.playerTop}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          <Text style={s.playerTitle} numberOfLines={1}>{media?.title || 'NendPlay Media'}</Text>
+          <TouchableOpacity onPress={() => flashHint('Casting will be available on supported TVs')}>
+            <Ionicons name="cast-outline" size={23} color="#FFFFFF" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setDetailsTab('episodes')}>
+            <Ionicons name="reader-outline" size={22} color="#FFFFFF" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => flashHint('More player options')}>
+            <Ionicons name="ellipsis-vertical" size={21} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+
+        {locked ? (
+          <View style={s.lockedBox}>
+            <Ionicons name="lock-closed" size={40} color="#FBBF24" />
+            <Text style={s.lockedText}>Premium Content</Text>
+            <Text style={s.lockedSub}>Subscribe to watch this</Text>
+            <TouchableOpacity style={s.subBtn} onPress={() => navigation.navigate('Subscribe')}>
+              <Text style={s.subBtnText}>Subscribe Now</Text>
+            </TouchableOpacity>
+          </View>
+        ) : playbackError ? (
+          <View style={s.lockedBox}>
+            <Ionicons name="alert-circle-outline" size={40} color="#F97316" />
+            <Text style={s.lockedText}>Playback unavailable</Text>
+            <Text style={s.lockedSub}>{playbackError}</Text>
+          </View>
+        ) : (
+          <View style={{ position: 'relative' }} {...panResponder.panHandlers}>
+            <VideoView
+              player={player}
+              style={s.player}
+              nativeControls={false}
+              contentFit="cover"
+              allowsPictureInPicture
+              startsPictureInPictureAutomatically
+              fullscreenOptions={{ enable: true }}
+              onError={() => Alert.alert('Playback Error', 'Unable to play this media right now. Please try again.')}
+            />
+
+            {controlsVisible ? (
+              <View style={s.playerOverlay} pointerEvents="box-none">
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <View style={s.railWrap}>
+                    <Ionicons name="sunny-outline" size={18} color="#FBBF24" />
+                    <View style={s.rail}>
+                      <View style={[s.railFill, { height: `${Math.round(brightness * 100)}%` }]} />
+                    </View>
+                    <Text style={{ color: '#FFFFFF', fontSize: 10 }}>Brightness</Text>
+                  </View>
+
+                  <TouchableOpacity
+                    style={[s.roundControl, { width: 48, height: 48, borderRadius: 24, borderWidth: 0 }]}
+                    onPress={() => setControlsVisible(false)}>
+                    <Ionicons name="lock-closed-outline" size={22} color="#FFFFFF" />
+                  </TouchableOpacity>
+
+                  <View style={s.railWrap}>
+                    <Ionicons name="volume-high-outline" size={18} color="#FFFFFF" />
+                    <View style={s.rail}>
+                      <View style={[s.railFill, { height: `${Math.round(volume * 100)}%` }]} />
+                    </View>
+                    <Text style={{ color: '#FFFFFF', fontSize: 10 }}>Volume</Text>
+                  </View>
+                </View>
+
+                <View>
+                  <View style={s.centerControls}>
+                    <Pressable onPress={() => handlePlayerTap('left')}>
+                      <Ionicons name="play-skip-back" size={32} color="#FFFFFF" />
+                    </Pressable>
+                    <TouchableOpacity onPress={() => seekBy(-10)}>
+                      <Ionicons name="reload-circle-outline" size={48} color="#FFFFFF" />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={s.roundControl} onPress={togglePlay}>
+                      <Ionicons name={playing ? 'pause' : 'play'} size={38} color="#FFFFFF" />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => seekBy(10)}>
+                      <Ionicons name="reload-circle-outline" size={48} color="#FFFFFF" style={{ transform: [{ scaleX: -1 }] }} />
+                    </TouchableOpacity>
+                    <Pressable onPress={() => handlePlayerTap('right')}>
+                      <Ionicons name="play-skip-forward" size={32} color="#FFFFFF" />
+                    </Pressable>
+                  </View>
+
+                  {overlayHint ? (
+                    <View style={s.hintBubble}>
+                      <Ionicons name="hand-left-outline" size={22} color="#FFFFFF" />
+                      <Text style={{ color: '#FFFFFF', fontWeight: '900', textAlign: 'center' }}>{overlayHint}</Text>
+                    </View>
+                  ) : null}
+                </View>
+
+                <View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <Text style={{ color: '#FFFFFF', fontWeight: '900' }}>{formatTime(position)}</Text>
+                    <Pressable
+                      style={[s.progress, { height: 5 }]}
+                      onLayout={(event) => setProgressWidth(Math.max(1, event.nativeEvent.layout.width))}
+                      onPress={(event) => seekToRatio(event.nativeEvent.locationX)}>
+                      <View style={[s.progressFill, { width: `${progressPercent}%` }]} />
+                    </Pressable>
+                    <Text style={{ color: '#FFFFFF', fontWeight: '900' }}>{formatTime(duration)}</Text>
+                  </View>
+                </View>
+              </View>
+            ) : (
+              <Pressable
+                style={StyleSheet.absoluteFill}
+                onPress={() => setControlsVisible(true)}
+              />
+            )}
+          </View>
+        )}
+
+        <View style={s.playerToolBar}>
+          {[
+            ['list-outline', 'Playlist'],
+            ['chatbox-outline', 'Subtitles'],
+            ['pulse-outline', 'Audio'],
+            ['speedometer-outline', 'Speed'],
+            ['tv-outline', playbackSourceType === 'hls' ? 'Auto' : 'Quality'],
+            ['scan-outline', 'Fullscreen'],
+          ].map(([icon, label]) => (
+            <TouchableOpacity key={label} style={{ alignItems: 'center' }} onPress={() => flashHint(`${label} settings`)}>
+              <Ionicons name={icon} size={22} color="#FFFFFF" />
+              <Text style={s.toolText}>{label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      <ScrollView contentContainerStyle={{ paddingBottom: 96 }}>
+        <View style={s.info}>
+          <View style={{ flexDirection: 'row', gap: 14 }}>
+            <View style={{ flex: 1 }}>
+              <Text style={s.title}>{media?.title}</Text>
+              <Text style={s.meta}>
+                {media?.type?.replace('_', ' ') || 'video'} | {media?.viewCount || 0} views
+                {media?.releaseYear ? ` | ${media.releaseYear}` : ''} | {genreText}
+                {duration ? ` | ${formatTime(duration)}` : ''}
+              </Text>
+            </View>
+            <View style={s.poster}>
+              {thumbnailUri ? (
+                <Image source={{ uri: thumbnailUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+              ) : (
+                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="image-outline" size={26} color={c.textMuted} />
+                </View>
+              )}
+            </View>
+          </View>
+
+          <View style={s.actions}>
+            <TouchableOpacity
+              style={[s.actionBtn, liked && { backgroundColor: c.primary, borderColor: c.primary }]}
+              onPress={handleLike}>
+              <Ionicons name={liked ? 'heart' : 'heart-outline'} size={18} color={liked ? 'white' : c.primary} />
+              <Text style={[s.actionBtnText, liked && { color: 'white' }]}>Like</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.actionBtn} onPress={handleDownload}>
+              <Ionicons name="download-outline" size={18} color={c.textMuted} />
+              <Text style={s.actionBtnText}>Download</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.actionBtn} onPress={handleShare}>
+              <Ionicons name="share-outline" size={18} color={c.textMuted} />
+              <Text style={s.actionBtnText}>Share</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.actionBtn} onPress={() => flashHint('Added to My List')}>
+              <Ionicons name="add-outline" size={20} color={c.textMuted} />
+              <Text style={s.actionBtnText}>My List</Text>
+            </TouchableOpacity>
+          </View>
+
+          {!locked && !localUri ? (
+            <View style={s.adStack}>
+              <AdBanner style={s.adUnit} horizontalPadding={64} />
+              <NendPlayAdCard placement="media" style={s.adUnit} />
+            </View>
+          ) : null}
+
+          <View style={s.tabRow}>
+            {['overview', 'episodes', 'related', 'comments'].map((tab) => (
+              <TouchableOpacity key={tab} style={s.detailTab} onPress={() => setDetailsTab(tab)}>
+                <Text style={[s.detailTabText, { color: detailsTab === tab ? c.primary : c.textMuted }]}>
+                  {tab === 'related' ? 'More Like This' : tab === 'comments' ? 'Comments' : tab[0].toUpperCase() + tab.slice(1)}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {detailsTab === 'overview' ? (
+            <View style={{ flexDirection: width > 420 ? 'row' : 'column', gap: 18 }}>
+              <Text style={[s.description, { flex: 1 }]}>
+                {media?.description || 'No overview has been added for this media yet.'}
+              </Text>
+              <View style={[s.twoColInfo, width <= 420 && { borderLeftWidth: 0, paddingLeft: 0 }]}>
+                <Text style={s.meta}>Director    {media?.director || 'NendPlay Studios'}</Text>
+                <Text style={s.meta}>Cast        {castText}</Text>
+                <Text style={s.meta}>Genre       {genreText}</Text>
+              </View>
+            </View>
+          ) : null}
+
+          {detailsTab === 'episodes' && collectionItems.length > 1 ? (
+            <View>
+              {collectionItems.map((item) => {
+                const active = item._id === mediaId
+                const itemThumb = mediaService.getThumbnailUrl(item) || item.thumbnailUrl || ''
+                return (
+                  <TouchableOpacity
+                    key={item._id}
+                    style={[s.episodeCard, active && { borderColor: c.primary }]}
+                    onPress={() => !active && openCollectionItem(item)}>
+                    <View style={s.episodeThumb}>
+                      {itemThumb ? (
+                        <Image source={{ uri: itemThumb }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                      ) : (
+                        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                          <Ionicons name="play-circle" size={24} color={c.primary} />
+                        </View>
+                      )}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.episodeTitle} numberOfLines={1}>{getCollectionLabel(item)}</Text>
+                      <Text style={s.episodeMeta} numberOfLines={1}>{item.title}</Text>
+                    </View>
+                    <Text style={s.episodeMeta}>{formatTime(item.duration || 0)}</Text>
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
+          ) : null}
+
+          {detailsTab === 'episodes' && collectionItems.length <= 1 ? (
+            <Text style={s.description}>No episodes or parts are attached to this media yet.</Text>
+          ) : null}
+
+          {detailsTab === 'related' ? (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+              {(moreLikeThis.length ? moreLikeThis : collectionItems.slice(0, 6)).map((item) => {
+                const itemThumb = mediaService.getThumbnailUrl(item) || item.thumbnailUrl || ''
+                return (
+                  <TouchableOpacity key={item._id} style={{ width: 126 }} onPress={() => openCollectionItem(item)}>
+                    <View style={[s.poster, { width: 126, height: 82 }]}>
+                      {itemThumb ? (
+                        <Image source={{ uri: itemThumb }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                      ) : null}
+                    </View>
+                    <Text style={s.episodeTitle} numberOfLines={2}>{item.title}</Text>
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
+          ) : null}
+
+          {detailsTab === 'comments' ? (
+            <View style={{ gap: 10 }}>
+              <Text style={s.description}>Comments will appear here when viewers start discussing this media.</Text>
+              <TouchableOpacity style={s.actionBtn} onPress={() => flashHint('Comment composer coming soon')}>
+                <Ionicons name="chatbubble-ellipses-outline" size={18} color={c.textMuted} />
+                <Text style={s.actionBtnText}>Add comment</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+
+          {nextUp ? (
+            <View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 22, marginBottom: 10 }}>
+                <Text style={[s.rowTitle, { flex: 1 }]}>Next Up</Text>
+                <Text style={s.meta}>Auto Play</Text>
+                <Switch
+                  value={autoPlayNext}
+                  onValueChange={setAutoPlayNext}
+                  trackColor={{ false: c.surfaceHigh, true: c.primary }}
+                  thumbColor="#FFFFFF"
+                />
+              </View>
+              <TouchableOpacity style={s.episodeCard} onPress={() => openCollectionItem(nextUp)}>
+                <View style={s.episodeThumb}>
+                  {(mediaService.getThumbnailUrl(nextUp) || nextUp.thumbnailUrl) ? (
+                    <Image
+                      source={{ uri: mediaService.getThumbnailUrl(nextUp) || nextUp.thumbnailUrl }}
+                      style={{ width: '100%', height: '100%' }}
+                      resizeMode="cover"
+                    />
+                  ) : null}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.episodeTitle} numberOfLines={2}>{nextUp.title}</Text>
+                  <Text style={s.episodeMeta}>{getCollectionLabel(nextUp)}</Text>
+                </View>
+                <Text style={s.episodeMeta}>{formatTime(nextUp.duration || 0)}</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+
+          {!locked && !localUri ? <NativeAdvancedAd style={s.adUnit} /> : null}
+        </View>
+      </ScrollView>
+
+      {!locked && !playbackError ? (
+        <View style={[s.bottomMini, { paddingBottom: Math.max(10, insets.bottom) }]}>
+          <View style={[s.episodeThumb, { width: 64, height: 42 }]}>
+            {thumbnailUri ? <Image source={{ uri: thumbnailUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" /> : null}
+          </View>
+          <Text style={[s.episodeTitle, { flex: 1 }]} numberOfLines={2}>{media?.title}</Text>
+          <TouchableOpacity onPress={togglePlay}>
+            <Ionicons name={playing ? 'pause' : 'play'} size={28} color="#FFFFFF" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={playNextCollectionItem}>
+            <Ionicons name="play-skip-forward" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Ionicons name="close" size={28} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+      ) : null}
     </View>
   )
 
