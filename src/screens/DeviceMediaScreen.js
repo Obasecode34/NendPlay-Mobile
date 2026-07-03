@@ -41,7 +41,9 @@ export default function DeviceMediaScreen({ navigation, embedded = false }) {
       first: PAGE_SIZE,
       after,
       sortBy: [MediaLibrary.SortBy.creationTime],
-      resolveWithFullInfo: false,
+      // Full info gives us localUri/folder metadata when Android exposes it,
+      // including media indexed from removable/shared storage.
+      resolveWithFullInfo: true,
     })
 
     if (type === DEVICE_TABS.VIDEOS) {

@@ -3,6 +3,7 @@ import {
   Dimensions,
   FlatList,
   Image,
+  Alert,
   Modal,
   PanResponder,
   Pressable,
@@ -174,7 +175,7 @@ function Sheet({ theme, visible, title, onClose, children }) {
   )
 }
 
-function MoreSheet({ theme, visible, onClose, onOpenSubtitles, onOpenAudio, onOpenQueue, onOpenGestures }) {
+function MoreSheet({ theme, visible, onClose, onOpenAudio, onOpenQueue, onOpenGestures }) {
   const c = theme.colors
   return (
     <Sheet theme={theme} visible={visible} title="More" onClose={onClose}>
@@ -203,38 +204,34 @@ function MoreSheet({ theme, visible, onClose, onOpenSubtitles, onOpenAudio, onOp
         ))}
       </View>
       <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
-        <ToolbarChip theme={theme} label="Subtitles" icon="text-outline" onPress={onOpenSubtitles} />
         <ToolbarChip theme={theme} label="Audio" icon="volume-high-outline" onPress={onOpenAudio} />
+        <ToolbarChip theme={theme} label="Queue" icon="list-outline" onPress={onOpenQueue} />
       </View>
     </Sheet>
   )
 }
 
-function SubtitlesSheet({ theme, visible, onClose }) {
+function AudioSheet({ theme, visible, onClose, muted, volume, onMuteToggle, onVolumeChange }) {
   const c = theme.colors
-  const tracks = ['Disable', 'English (en.srt)', 'English (en.ass)', 'Hindi (hi.srt)', 'Download Subtitles', 'Subtitle Settings']
-  return (
-    <Sheet theme={theme} visible={visible} title="Subtitles" onClose={onClose}>
-      {tracks.map((track, index) => (
-        <View key={track} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: index < tracks.length - 1 ? 1 : 0, borderBottomColor: c.border }}>
-          <Text style={{ color: '#FFFFFF' }}>{track}</Text>
-          <Ionicons name={index === 1 ? 'radio-button-on' : index > 3 ? (index === 4 ? 'download-outline' : 'settings-outline') : 'radio-button-off'} size={20} color={index === 1 ? '#FF9800' : '#FFFFFF'} />
-        </View>
-      ))}
-    </Sheet>
-  )
-}
-
-function AudioSheet({ theme, visible, onClose }) {
-  const c = theme.colors
-  const tracks = ['Audio Track #1 | English, AAC, 2.0', 'Audio Track #2 | Hindi, AAC, 5.1', 'Audio Track #3 | English, DTS, 5.1', 'Audio Settings']
+  const tracks = [
+    { label: muted ? 'Unmute audio' : 'Mute audio', icon: muted ? 'volume-mute' : 'volume-high', onPress: onMuteToggle },
+    { label: `Volume ${Math.round(volume * 100)}%`, icon: 'options-outline' },
+    { label: 'Volume up', icon: 'add-circle-outline', onPress: () => onVolumeChange(Math.min(1, volume + 0.1)) },
+    { label: 'Volume down', icon: 'remove-circle-outline', onPress: () => onVolumeChange(Math.max(0, volume - 0.1)) },
+    { label: 'Default audio track', icon: 'radio-button-on' },
+    { label: 'Background audio mode ready', icon: 'phone-portrait-outline' },
+  ]
   return (
     <Sheet theme={theme} visible={visible} title="Audio" onClose={onClose}>
       {tracks.map((track, index) => (
-        <View key={track} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: index < tracks.length - 1 ? 1 : 0, borderBottomColor: c.border }}>
-          <Text style={{ color: '#FFFFFF', flex: 1 }}>{track}</Text>
-          <Ionicons name={index === 0 ? 'radio-button-on' : index === 3 ? 'settings-outline' : 'radio-button-off'} size={20} color={index === 0 ? '#FF9800' : '#FFFFFF'} />
-        </View>
+        <TouchableOpacity
+          key={track.label}
+          disabled={!track.onPress}
+          onPress={track.onPress}
+          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: index < tracks.length - 1 ? 1 : 0, borderBottomColor: c.border }}>
+          <Text style={{ color: '#FFFFFF', flex: 1 }}>{track.label}</Text>
+          <Ionicons name={track.icon} size={20} color={index === 4 ? '#FF9800' : '#FFFFFF'} />
+        </TouchableOpacity>
       ))}
     </Sheet>
   )
@@ -298,18 +295,21 @@ function CinematicVideoPlayer({ asset, uri, theme, queue, onClose, onNext, onPre
   const [overlay, setOverlay] = useState('')
   const [speedOpen, setSpeedOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
-  const [subtitlesOpen, setSubtitlesOpen] = useState(false)
   const [audioOpen, setAudioOpen] = useState(false)
   const [queueOpen, setQueueOpen] = useState(false)
   const [gesturesOpen, setGesturesOpen] = useState(false)
   const [volume, setVolume] = useState(1)
+  const [muted, setMuted] = useState(false)
   const [virtualBrightness, setVirtualBrightness] = useState(0.75)
+  const [edgeControl, setEdgeControl] = useState(null)
+  const edgeTimer = useRef(null)
   const { videoSettings, setPlaybackRate, saveProgress, addHistory, toggleFavorite, favorites } = useDeviceMediaStore()
 
   const player = useVideoPlayer(getSourceForUri(uri, asset?.filename), (player) => {
     player.timeUpdateEventInterval = 3
     player.playbackRate = videoSettings.playbackRate
     player.volume = volume
+    player.muted = muted
     player.staysActiveInBackground = true
     player.showNowPlayingNotification = true
     player.keepScreenOnWhilePlaying = true
@@ -340,12 +340,28 @@ function CinematicVideoPlayer({ asset, uri, theme, queue, onClose, onNext, onPre
       setDuration(player.duration || asset?.duration || 0)
       setPlaying(Boolean(player.playing))
     }, 500)
-    return () => clearInterval(timer)
+    return () => {
+      clearInterval(timer)
+      if (edgeTimer.current) clearTimeout(edgeTimer.current)
+    }
   }, [uri, asset?.duration])
+
+  useEffect(() => {
+    try {
+      player.volume = volume
+      player.muted = muted
+    } catch {}
+  }, [volume, muted, uri])
 
   const flash = (message) => {
     setOverlay(message)
     setTimeout(() => setOverlay(''), 900)
+  }
+
+  const flashEdgeControl = (type) => {
+    setEdgeControl(type)
+    if (edgeTimer.current) clearTimeout(edgeTimer.current)
+    edgeTimer.current = setTimeout(() => setEdgeControl(null), 900)
   }
 
   const seekBy = (seconds) => {
@@ -374,6 +390,30 @@ function CinematicVideoPlayer({ asset, uri, theme, queue, onClose, onNext, onPre
     setPosition(next)
   }
 
+  const enterFullscreen = async () => {
+    try {
+      await videoRef.current?.enterFullscreen?.()
+    } catch {
+      flash('Fullscreen unavailable')
+    }
+  }
+
+  const setPlayerVolume = (next) => {
+    const clamped = Math.max(0, Math.min(1, next))
+    setVolume(clamped)
+    try { player.volume = clamped } catch {}
+    flashEdgeControl('volume')
+  }
+
+  const openSleepTimer = () => {
+    Alert.alert('Sleep timer', 'Stop playback after:', [
+      { text: '15 minutes', onPress: () => setTimeout(() => { player.pause(); setPlaying(false) }, 15 * 60 * 1000) },
+      { text: '30 minutes', onPress: () => setTimeout(() => { player.pause(); setPlaying(false) }, 30 * 60 * 1000) },
+      { text: '60 minutes', onPress: () => setTimeout(() => { player.pause(); setPlaying(false) }, 60 * 60 * 1000) },
+      { text: 'Cancel', style: 'cancel' },
+    ])
+  }
+
   const handleTap = (side) => {
     const now = Date.now()
     if (lastTap.current.side === side && now - lastTap.current.time < 360) {
@@ -387,18 +427,26 @@ function CinematicVideoPlayer({ asset, uri, theme, queue, onClose, onNext, onPre
 
   const panResponder = PanResponder.create({
     onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dx) > 18 || Math.abs(gesture.dy) > 18,
+    onPanResponderMove: (_, gesture) => {
+      if (Math.abs(gesture.dy) <= Math.abs(gesture.dx)) return
+      if (gesture.moveX > width / 2) {
+        setVolume((current) => {
+          const applied = Math.max(0, Math.min(1, current + (gesture.dy < 0 ? 0.025 : -0.025)))
+          try { player.volume = applied } catch {}
+          return applied
+        })
+        flashEdgeControl('volume')
+      } else {
+        setVirtualBrightness((current) => Math.max(0.2, Math.min(1, current + (gesture.dy < 0 ? 0.02 : -0.02))))
+        flashEdgeControl('brightness')
+      }
+    },
     onPanResponderRelease: (_, gesture) => {
       if (Math.abs(gesture.dx) > Math.abs(gesture.dy)) {
         const delta = gesture.dx > 0 ? 15 : -15
         try { player.seekBy(delta) } catch {}
         flash(delta > 0 ? '+15s' : '-15s')
-        return
       }
-      const next = Math.max(0, Math.min(1, volume + (gesture.dy < 0 ? 0.1 : -0.1)))
-      setVolume(next)
-      player.volume = next
-      setVirtualBrightness(Math.max(0.2, Math.min(1, virtualBrightness + (gesture.dy < 0 ? 0.08 : -0.08))))
-      flash(`Volume ${Math.round(next * 100)}%`)
     },
   })
 
@@ -417,7 +465,7 @@ function CinematicVideoPlayer({ asset, uri, theme, queue, onClose, onNext, onPre
           surfaceType="surfaceView"
           allowsPictureInPicture
           startsPictureInPictureAutomatically
-          fullscreenOptions={{ enable: true, orientation: 'default', autoExitOnRotate: false }}
+          fullscreenOptions={{ enable: true, orientation: 'landscape', autoExitOnRotate: false }}
         />
         <View style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, flexDirection: 'row' }}>
           <Pressable style={{ flex: 1 }} onPress={() => handleTap('left')} />
@@ -441,13 +489,10 @@ function CinematicVideoPlayer({ asset, uri, theme, queue, onClose, onNext, onPre
                     </TouchableOpacity>
                   ) : null}
                   <TouchableOpacity onPress={() => setAudioOpen(true)}>
-                    <Ionicons name="musical-note" size={22} color="#FFFFFF" />
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => setSubtitlesOpen(true)}>
-                    <Ionicons name="chatbox-ellipses-outline" size={22} color="#FFFFFF" />
+                    <Ionicons name="musical-note" size={20} color="#FFFFFF" />
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => setQueueOpen(true)}>
-                    <Ionicons name="cast-outline" size={22} color="#FFFFFF" />
+                    <Ionicons name="list-outline" size={20} color="#FFFFFF" />
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => setMoreOpen(true)}>
                     <Ionicons name="ellipsis-vertical" size={22} color="#FFFFFF" />
@@ -456,25 +501,15 @@ function CinematicVideoPlayer({ asset, uri, theme, queue, onClose, onNext, onPre
               </View>
 
               <View pointerEvents="box-none" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <View style={{ alignItems: 'center', gap: 8 }}>
-                  <Ionicons name="sunny-outline" size={20} color="#FFFFFF" />
-                  <View style={{ width: 4, height: 104, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.5)', justifyContent: 'flex-end' }}>
-                    <View style={{ height: `${Math.round(virtualBrightness * 100)}%`, backgroundColor: '#FF9800', borderRadius: 3 }} />
-                  </View>
-                </View>
-                <ControlButton icon="arrow-undo-circle-outline" label="10" onPress={() => seekBy(-10)} size={46} />
+                <ControlButton icon="play-skip-back" onPress={onPrev} size={28} />
+                <ControlButton icon="arrow-undo-circle-outline" label="10" onPress={() => seekBy(-10)} size={36} />
                 <TouchableOpacity
                   onPress={togglePlay}
-                  style={{ width: 74, height: 74, borderRadius: 37, backgroundColor: 'rgba(0,0,0,0.48)', alignItems: 'center', justifyContent: 'center' }}>
-                  <Ionicons name={playing ? 'pause' : 'play'} size={42} color="#FFFFFF" />
+                  style={{ width: 58, height: 58, borderRadius: 29, backgroundColor: 'rgba(0,0,0,0.48)', alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name={playing ? 'pause' : 'play'} size={32} color="#FFFFFF" />
                 </TouchableOpacity>
-                <ControlButton icon="arrow-redo-circle-outline" label="10" onPress={() => seekBy(10)} size={46} />
-                <View style={{ alignItems: 'center', gap: 8 }}>
-                  <Ionicons name="volume-high-outline" size={20} color="#FFFFFF" />
-                  <View style={{ width: 4, height: 104, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.5)', justifyContent: 'flex-end' }}>
-                    <View style={{ height: `${Math.round(volume * 100)}%`, backgroundColor: '#FF9800', borderRadius: 3 }} />
-                  </View>
-                </View>
+                <ControlButton icon="arrow-redo-circle-outline" label="10" onPress={() => seekBy(10)} size={36} />
+                <ControlButton icon="play-skip-forward" onPress={onNext} size={28} />
               </View>
 
               <View pointerEvents="box-none">
@@ -489,20 +524,38 @@ function CinematicVideoPlayer({ asset, uri, theme, queue, onClose, onNext, onPre
                     </View>
                   </Pressable>
                   <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '900' }}>{formatDuration(duration)}</Text>
-                  <TouchableOpacity style={{ marginLeft: 12 }}>
+                  <TouchableOpacity onPress={enterFullscreen} style={{ marginLeft: 12 }}>
                     <Ionicons name="scan-outline" size={23} color="#FFFFFF" />
                   </TouchableOpacity>
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <ControlButton icon="lock-closed-outline" label="Lock" />
-                  <ControlButton icon="speedometer-outline" label="Speed" onPress={() => setSpeedOpen((value) => !value)} />
-                  <ControlButton icon="volume-high-outline" label="Audio" onPress={() => setAudioOpen(true)} />
-                  <ControlButton icon="text-outline" label="Subtitle" onPress={() => setSubtitlesOpen(true)} />
-                  <ControlButton icon="play-skip-forward-outline" label="Next" onPress={onNext} />
-                  <ControlButton icon="timer-outline" label="Sleep Timer" />
-                  <ControlButton icon="ellipsis-horizontal" label="More" onPress={() => setMoreOpen(true)} />
+                  <ControlButton icon="play-skip-back-outline" label="Prev" onPress={onPrev} size={18} />
+                  <ControlButton icon="speedometer-outline" label="Speed" onPress={() => setSpeedOpen((value) => !value)} size={18} />
+                  <ControlButton icon="volume-high-outline" label="Audio" onPress={() => setAudioOpen(true)} size={18} />
+                  <ControlButton icon="play-skip-forward-outline" label="Next" onPress={onNext} size={18} />
+                  <ControlButton icon="timer-outline" label="Sleep" onPress={openSleepTimer} size={18} />
+                  <ControlButton icon="scan-outline" label="Full" onPress={enterFullscreen} size={18} />
+                  <ControlButton icon="ellipsis-horizontal" label="More" onPress={() => setMoreOpen(true)} size={18} />
                 </View>
               </View>
+            </View>
+          </View>
+        ) : null}
+
+        {edgeControl === 'brightness' ? (
+          <View pointerEvents="none" style={{ position: 'absolute', left: 18, top: 56, bottom: 64, alignItems: 'center', gap: 8 }}>
+            <Ionicons name="sunny-outline" size={18} color="#FFFFFF" />
+            <View style={{ width: 4, flex: 1, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.45)', justifyContent: 'flex-end' }}>
+              <View style={{ height: `${Math.round(virtualBrightness * 100)}%`, backgroundColor: '#FF9800', borderRadius: 3 }} />
+            </View>
+          </View>
+        ) : null}
+
+        {edgeControl === 'volume' ? (
+          <View pointerEvents="none" style={{ position: 'absolute', right: 18, top: 56, bottom: 64, alignItems: 'center', gap: 8 }}>
+            <Ionicons name="volume-high-outline" size={18} color="#FFFFFF" />
+            <View style={{ width: 4, flex: 1, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.45)', justifyContent: 'flex-end' }}>
+              <View style={{ height: `${Math.round(volume * 100)}%`, backgroundColor: '#FF9800', borderRadius: 3 }} />
             </View>
           </View>
         ) : null}
@@ -543,13 +596,19 @@ function CinematicVideoPlayer({ asset, uri, theme, queue, onClose, onNext, onPre
         theme={theme}
         visible={moreOpen}
         onClose={() => setMoreOpen(false)}
-        onOpenSubtitles={() => setSubtitlesOpen(true)}
         onOpenAudio={() => setAudioOpen(true)}
         onOpenQueue={() => setQueueOpen(true)}
         onOpenGestures={() => setGesturesOpen(true)}
       />
-      <SubtitlesSheet theme={theme} visible={subtitlesOpen} onClose={() => setSubtitlesOpen(false)} />
-      <AudioSheet theme={theme} visible={audioOpen} onClose={() => setAudioOpen(false)} />
+      <AudioSheet
+        theme={theme}
+        visible={audioOpen}
+        onClose={() => setAudioOpen(false)}
+        muted={muted}
+        volume={volume}
+        onMuteToggle={() => setMuted((value) => !value)}
+        onVolumeChange={setPlayerVolume}
+      />
       <QueueSheet theme={theme} visible={queueOpen} onClose={() => setQueueOpen(false)} queue={queue} selected={asset} onPlay={onPlayAsset} />
       <GesturesSheet theme={theme} visible={gesturesOpen} onClose={() => setGesturesOpen(false)} />
     </View>
@@ -639,22 +698,57 @@ function Header({ theme, query, setQuery, searchOpen, setSearchOpen, onMenu, onS
   )
 }
 
-function FolderScreen({ theme, groups }) {
+function FolderScreen({ theme, groups, onPlay }) {
   const c = theme.colors
+  const [selectedFolder, setSelectedFolder] = useState(null)
+
+  if (selectedFolder) {
+    return (
+      <FlatList
+        data={selectedFolder.items}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={{ padding: 16, paddingBottom: 104 }}
+        ListHeaderComponent={
+          <TouchableOpacity
+            onPress={() => setSelectedFolder(null)}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+            <Ionicons name="arrow-back" size={22} color={c.text} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: c.text, fontSize: 18, fontWeight: '900' }}>{selectedFolder.title}</Text>
+              <Text style={{ color: c.textMuted, fontSize: 12 }}>{selectedFolder.count} video{selectedFolder.count === 1 ? '' : 's'}</Text>
+            </View>
+          </TouchableOpacity>
+        }
+        renderItem={({ item }) => (
+          <TouchableOpacity
+            onPress={() => onPlay(item)}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: c.border }}>
+            <Image source={{ uri: resolvePoster(item) }} style={{ width: 84, height: 54, borderRadius: 8, backgroundColor: c.surface }} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: c.text, fontWeight: '900' }} numberOfLines={2}>{cleanTitle(item.filename)}</Text>
+              <Text style={{ color: c.textMuted, fontSize: 12, marginTop: 3 }}>{formatDuration(item.duration)} | {formatSize(getAssetSize(item)) || 'Local video'}</Text>
+            </View>
+            <Ionicons name="play-circle" size={24} color="#FF9800" />
+          </TouchableOpacity>
+        )}
+      />
+    )
+  }
+
   return (
     <FlatList
       data={groups}
       keyExtractor={(item) => item.id}
       contentContainerStyle={{ padding: 16, paddingBottom: 92 }}
       renderItem={({ item }) => (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 12 }}>
+        <TouchableOpacity onPress={() => setSelectedFolder(item)} style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 12 }}>
           <Ionicons name="folder" size={38} color="#FFB13B" />
           <View style={{ flex: 1 }}>
             <Text style={{ color: c.text, fontWeight: '900' }}>{item.title}</Text>
             <Text style={{ color: c.textMuted, fontSize: 12 }}>{item.count} videos</Text>
           </View>
-          <Ionicons name="ellipsis-vertical" size={18} color={c.textMuted} />
-        </View>
+          <Ionicons name="chevron-forward" size={18} color={c.textMuted} />
+        </TouchableOpacity>
       )}
       ListEmptyComponent={<EmptyState theme={theme} icon="folder-open-outline" title="No folders found" body="Video folders appear after NendPlay scans local videos." />}
     />
@@ -872,7 +966,7 @@ export default function VideoExperience({ theme, videos, loading, loadMore, hasM
   )
 
   const renderContent = () => {
-    if (activeTab === 'folders') return <FolderScreen theme={theme} groups={folders} />
+    if (activeTab === 'folders') return <FolderScreen theme={theme} groups={folders} onPlay={openAsset} />
     if (activeTab === 'playlists') return <PlaylistScreen theme={theme} videos={videos} onPlay={openAsset} />
     if (activeTab === 'favorites') {
       const favoriteVideos = videos.filter((item) => favorites[item.id || item.uri])
