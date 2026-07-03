@@ -37,6 +37,13 @@ const STATUS_COLORS = {
   expired: '#6B7280', rejected: '#EF4444',
 }
 
+const PAYMENT_GATEWAYS = [
+  { key: 'paystack', label: 'Paystack' },
+  { key: 'flutterwave', label: 'Flutterwave' },
+  { key: 'opay', label: 'OPay' },
+  { key: 'palmpay', label: 'PalmPay' },
+]
+
 export default function AdvertiseScreen({ navigation }) {
   const { theme } = useThemeStore()
   const insets = useSafeAreaInsets()
@@ -408,14 +415,14 @@ export default function AdvertiseScreen({ navigation }) {
 
               {/* Gateway */}
               <View style={{ flexDirection: 'row', gap: 8, marginBottom: 20 }}>
-                {['paystack', 'flutterwave'].map((gw) => (
-                  <TouchableOpacity key={gw} onPress={() => setForm({ ...form, gateway: gw })}
+                {PAYMENT_GATEWAYS.map((gw) => (
+                  <TouchableOpacity key={gw.key} onPress={() => setForm({ ...form, gateway: gw.key })}
                     style={{
                       flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center',
-                      backgroundColor: form.gateway === gw ? c.primary : c.surfaceHigh,
+                      backgroundColor: form.gateway === gw.key ? c.primary : c.surfaceHigh,
                     }}>
-                    <Text style={{ color: form.gateway === gw ? 'white' : c.textMuted, fontSize: 13, textTransform: 'capitalize' }}>
-                      {gw}
+                    <Text style={{ color: form.gateway === gw.key ? 'white' : c.textMuted, fontSize: 13 }}>
+                      {gw.label}
                     </Text>
                   </TouchableOpacity>
                 ))}

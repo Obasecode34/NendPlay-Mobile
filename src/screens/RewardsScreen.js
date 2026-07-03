@@ -97,6 +97,13 @@ function RewardCard({ reward, coins, onRedeem, redeeming }) {
   )
 }
 
+const PAYMENT_GATEWAYS = [
+  { key: 'paystack', label: 'Paystack' },
+  { key: 'flutterwave', label: 'Flutterwave' },
+  { key: 'opay', label: 'OPay' },
+  { key: 'palmpay', label: 'PalmPay' },
+]
+
 export default function RewardsScreen({ navigation }) {
   const { theme } = useThemeStore()
   const { user, isAuthenticated, updateUser } = useAuthStore()
@@ -351,13 +358,13 @@ export default function RewardsScreen({ navigation }) {
             </View>
 
             <View style={styles.gatewayRow}>
-              {['paystack', 'flutterwave'].map((item) => (
+              {PAYMENT_GATEWAYS.map((item) => (
                 <TouchableOpacity
-                  key={item}
-                  onPress={() => setGateway(item)}
-                  style={[styles.gatewayChip, gateway === item && styles.gatewayChipActive]}>
-                  <Text style={[styles.gatewayText, gateway === item && styles.gatewayTextActive]}>
-                    {item}
+                  key={item.key}
+                  onPress={() => setGateway(item.key)}
+                  style={[styles.gatewayChip, gateway === item.key && styles.gatewayChipActive]}>
+                  <Text style={[styles.gatewayText, gateway === item.key && styles.gatewayTextActive]}>
+                    {item.label}
                   </Text>
                 </TouchableOpacity>
               ))}

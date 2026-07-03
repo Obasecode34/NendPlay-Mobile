@@ -57,14 +57,17 @@ export default function MediaPlayerScreen({ route, navigation }) {
   const [liked, setLiked] = useState(false)
   const [controlsVisible, setControlsVisible] = useState(true)
   const [playing, setPlaying] = useState(true)
+  const [playbackSpeed, setPlaybackSpeed] = useState(1)
   const [position, setPosition] = useState(0)
   const [duration, setDuration] = useState(0)
   const [progressWidth, setProgressWidth] = useState(1)
   const [overlayHint, setOverlayHint] = useState('Double tap left or right\nto rewind or forward')
+  const [edgeIndicator, setEdgeIndicator] = useState(null)
   const [volume, setVolume] = useState(1)
   const [brightness, setBrightness] = useState(0.72)
   const [detailsTab, setDetailsTab] = useState('overview')
   const [autoPlayNext, setAutoPlayNext] = useState(true)
+  const videoViewRef = useRef(null)
   const lastTapRef = useRef({ side: null, time: 0 })
   const historyRecordedRef = useRef(false)
 
@@ -132,6 +135,18 @@ export default function MediaPlayerScreen({ route, navigation }) {
     const timer = setTimeout(() => setOverlayHint(''), 1800)
     return () => clearTimeout(timer)
   }, [overlayHint])
+
+  useEffect(() => {
+    if (!edgeIndicator) return undefined
+    const timer = setTimeout(() => setEdgeIndicator(null), 1400)
+    return () => clearTimeout(timer)
+  }, [edgeIndicator, volume, brightness])
+
+  useEffect(() => {
+    try {
+      player.playbackRate = playbackSpeed
+    } catch {}
+  }, [player, playbackSpeed])
 
   const fetchMedia = async () => {
     setLoading(true)
@@ -251,6 +266,14 @@ export default function MediaPlayerScreen({ route, navigation }) {
     } catch {}
   }
 
+  const setSpeed = (speed) => {
+    setPlaybackSpeed(speed)
+    try {
+      player.playbackRate = speed
+    } catch {}
+    flashHint(`Speed ${speed}x`)
+  }
+
   const togglePlay = () => {
     try {
       if (playing) {
@@ -292,11 +315,19 @@ export default function MediaPlayerScreen({ route, navigation }) {
         seekBy(seconds)
         return
       }
-      const next = Math.max(0, Math.min(1, volume + (gesture.dy < 0 ? 0.1 : -0.1)))
-      setVolume(next)
-      try { player.volume = next } catch {}
-      setBrightness(Math.max(0.2, Math.min(1, brightness + (gesture.dy < 0 ? 0.08 : -0.08))))
-      flashHint(`Volume ${Math.round(next * 100)}%`)
+      const isVolumeGesture = gesture.moveX > width / 2
+      if (isVolumeGesture) {
+        const next = Math.max(0, Math.min(1, volume + (gesture.dy < 0 ? 0.1 : -0.1)))
+        setVolume(next)
+        setEdgeIndicator('volume')
+        try { player.volume = next } catch {}
+        flashHint(`Volume ${Math.round(next * 100)}%`)
+        return
+      }
+      const nextBrightness = Math.max(0.2, Math.min(1, brightness + (gesture.dy < 0 ? 0.08 : -0.08)))
+      setBrightness(nextBrightness)
+      setEdgeIndicator('brightness')
+      flashHint(`Brightness ${Math.round(nextBrightness * 100)}%`)
     },
   })
 
@@ -306,10 +337,70 @@ export default function MediaPlayerScreen({ route, navigation }) {
   }
 
   const playNextCollectionItem = () => {
-    if (collectionItems.length <= 1) return
+    if (collectionItems.length <= 1) {
+      flashHint('No next item')
+      return
+    }
     const currentIndex = collectionItems.findIndex((item) => item._id === mediaId)
     const next = collectionItems[currentIndex >= 0 ? (currentIndex + 1) % collectionItems.length : 0]
     openCollectionItem(next)
+  }
+
+  const playPreviousCollectionItem = () => {
+    if (collectionItems.length <= 1) {
+      flashHint('No previous item')
+      return
+    }
+    const currentIndex = collectionItems.findIndex((item) => item._id === mediaId)
+    const previousIndex = currentIndex > 0 ? currentIndex - 1 : collectionItems.length - 1
+    openCollectionItem(collectionItems[previousIndex])
+  }
+
+  const openFullscreen = async () => {
+    try {
+      await videoViewRef.current?.enterFullscreen?.()
+    } catch {
+      flashHint('Fullscreen is unavailable on this device')
+    }
+  }
+
+  const handlePlayerTool = (label) => {
+    if (label === 'Playlist') {
+      setDetailsTab('episodes')
+      flashHint(collectionItems.length > 1 ? 'Playlist opened below' : 'No playlist items')
+      return
+    }
+    if (label === 'Subtitles') {
+      Alert.alert('Subtitles', 'Subtitle track selection will appear here when this media includes subtitle files.')
+      return
+    }
+    if (label === 'Audio') {
+      Alert.alert('Audio', 'This media is using its default audio track.')
+      return
+    }
+    if (label === 'Speed') {
+      Alert.alert(
+        'Playback speed',
+        `Current speed: ${playbackSpeed}x`,
+        [0.5, 0.75, 1, 1.25, 1.5, 2].map((speed) => ({
+          text: `${speed}x`,
+          onPress: () => setSpeed(speed),
+        })).concat({ text: 'Cancel', style: 'cancel' })
+      )
+      return
+    }
+    if (label === 'Auto') {
+      setAutoPlayNext((value) => !value)
+      flashHint(`Auto play ${autoPlayNext ? 'off' : 'on'}`)
+      return
+    }
+    if (label === 'Quality') {
+      Alert.alert('Quality', playbackSourceType === 'hls' ? 'Adaptive quality is enabled for this stream.' : 'This video is using the available source quality.')
+      return
+    }
+    if (label === 'Fullscreen') {
+      openFullscreen()
+    }
   }
 
   const formatTime = (seconds = 0) => {
@@ -350,15 +441,15 @@ export default function MediaPlayerScreen({ route, navigation }) {
       backgroundColor: 'rgba(0,0,0,0.28)',
     },
     railWrap: {
-      width: 58,
-      paddingVertical: 10,
-      borderRadius: 22,
+      width: 48,
+      paddingVertical: 8,
+      borderRadius: 18,
       backgroundColor: 'rgba(0,0,0,0.48)',
       alignItems: 'center',
-      gap: 8,
+      gap: 6,
     },
     rail: {
-      width: 4, height: 112, borderRadius: 4,
+      width: 4, height: 88, borderRadius: 4,
       backgroundColor: 'rgba(255,255,255,0.42)',
       justifyContent: 'flex-end',
       overflow: 'hidden',
@@ -368,10 +459,10 @@ export default function MediaPlayerScreen({ route, navigation }) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 24,
+      gap: 18,
     },
     roundControl: {
-      width: 72, height: 72, borderRadius: 36,
+      width: 56, height: 56, borderRadius: 28,
       borderWidth: 2, borderColor: '#FFFFFF',
       backgroundColor: 'rgba(0,0,0,0.28)',
       alignItems: 'center', justifyContent: 'center',
@@ -391,12 +482,12 @@ export default function MediaPlayerScreen({ route, navigation }) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-around',
-      paddingVertical: 13,
+      paddingVertical: 9,
       backgroundColor: '#000',
       borderBottomWidth: 1,
       borderBottomColor: c.border,
     },
-    toolText: { color: '#FFFFFF', fontSize: 11, fontWeight: '800', marginTop: 4 },
+    toolText: { color: '#FFFFFF', fontSize: 9, fontWeight: '800', marginTop: 3 },
     lockedBox: {
       width, height: width * 9 / 16, backgroundColor: c.surface,
       alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -538,6 +629,7 @@ export default function MediaPlayerScreen({ route, navigation }) {
         ) : (
           <View style={{ position: 'relative' }} {...panResponder.panHandlers}>
             <VideoView
+              ref={videoViewRef}
               player={player}
               style={s.player}
               nativeControls={false}
@@ -550,47 +642,51 @@ export default function MediaPlayerScreen({ route, navigation }) {
 
             {controlsVisible ? (
               <View style={s.playerOverlay} pointerEvents="box-none">
+                <Pressable
+                  style={[StyleSheet.absoluteFill, { zIndex: 0 }]}
+                  onPress={() => setControlsVisible(false)}
+                />
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <View style={s.railWrap}>
-                    <Ionicons name="sunny-outline" size={18} color="#FBBF24" />
-                    <View style={s.rail}>
-                      <View style={[s.railFill, { height: `${Math.round(brightness * 100)}%` }]} />
+                  {edgeIndicator === 'brightness' ? (
+                    <View style={[s.railWrap, { zIndex: 1 }]}>
+                      <Ionicons name="sunny-outline" size={16} color="#FBBF24" />
+                      <View style={s.rail}>
+                        <View style={[s.railFill, { height: `${Math.round(brightness * 100)}%` }]} />
+                      </View>
+                      <Text style={{ color: '#FFFFFF', fontSize: 9 }}>Brightness</Text>
                     </View>
-                    <Text style={{ color: '#FFFFFF', fontSize: 10 }}>Brightness</Text>
-                  </View>
+                  ) : <View style={{ width: 48 }} />}
 
-                  <TouchableOpacity
-                    style={[s.roundControl, { width: 48, height: 48, borderRadius: 24, borderWidth: 0 }]}
-                    onPress={() => setControlsVisible(false)}>
-                    <Ionicons name="lock-closed-outline" size={22} color="#FFFFFF" />
-                  </TouchableOpacity>
+                  <View style={{ width: 48 }} />
 
-                  <View style={s.railWrap}>
-                    <Ionicons name="volume-high-outline" size={18} color="#FFFFFF" />
-                    <View style={s.rail}>
-                      <View style={[s.railFill, { height: `${Math.round(volume * 100)}%` }]} />
+                  {edgeIndicator === 'volume' ? (
+                    <View style={[s.railWrap, { zIndex: 1 }]}>
+                      <Ionicons name="volume-high-outline" size={16} color="#FFFFFF" />
+                      <View style={s.rail}>
+                        <View style={[s.railFill, { height: `${Math.round(volume * 100)}%` }]} />
+                      </View>
+                      <Text style={{ color: '#FFFFFF', fontSize: 9 }}>Volume</Text>
                     </View>
-                    <Text style={{ color: '#FFFFFF', fontSize: 10 }}>Volume</Text>
-                  </View>
+                  ) : <View style={{ width: 48 }} />}
                 </View>
 
-                <View>
+                <View style={{ zIndex: 1 }}>
                   <View style={s.centerControls}>
-                    <Pressable onPress={() => handlePlayerTap('left')}>
-                      <Ionicons name="play-skip-back" size={32} color="#FFFFFF" />
-                    </Pressable>
+                    <TouchableOpacity onPress={playPreviousCollectionItem}>
+                      <Ionicons name="play-skip-back" size={24} color="#FFFFFF" />
+                    </TouchableOpacity>
                     <TouchableOpacity onPress={() => seekBy(-10)}>
-                      <Ionicons name="reload-circle-outline" size={48} color="#FFFFFF" />
+                      <Ionicons name="reload-circle-outline" size={34} color="#FFFFFF" />
                     </TouchableOpacity>
                     <TouchableOpacity style={s.roundControl} onPress={togglePlay}>
-                      <Ionicons name={playing ? 'pause' : 'play'} size={38} color="#FFFFFF" />
+                      <Ionicons name={playing ? 'pause' : 'play'} size={30} color="#FFFFFF" />
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => seekBy(10)}>
-                      <Ionicons name="reload-circle-outline" size={48} color="#FFFFFF" style={{ transform: [{ scaleX: -1 }] }} />
+                      <Ionicons name="reload-circle-outline" size={34} color="#FFFFFF" style={{ transform: [{ scaleX: -1 }] }} />
                     </TouchableOpacity>
-                    <Pressable onPress={() => handlePlayerTap('right')}>
-                      <Ionicons name="play-skip-forward" size={32} color="#FFFFFF" />
-                    </Pressable>
+                    <TouchableOpacity onPress={playNextCollectionItem}>
+                      <Ionicons name="play-skip-forward" size={24} color="#FFFFFF" />
+                    </TouchableOpacity>
                   </View>
 
                   {overlayHint ? (
@@ -601,7 +697,7 @@ export default function MediaPlayerScreen({ route, navigation }) {
                   ) : null}
                 </View>
 
-                <View>
+                <View style={{ zIndex: 1 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                     <Text style={{ color: '#FFFFFF', fontWeight: '900' }}>{formatTime(position)}</Text>
                     <Pressable
@@ -623,21 +719,21 @@ export default function MediaPlayerScreen({ route, navigation }) {
           </View>
         )}
 
-        <View style={s.playerToolBar}>
+        {controlsVisible ? <View style={s.playerToolBar}>
           {[
             ['list-outline', 'Playlist'],
             ['chatbox-outline', 'Subtitles'],
             ['pulse-outline', 'Audio'],
             ['speedometer-outline', 'Speed'],
-            ['tv-outline', playbackSourceType === 'hls' ? 'Auto' : 'Quality'],
+            ['tv-outline', 'Auto'],
             ['scan-outline', 'Fullscreen'],
           ].map(([icon, label]) => (
-            <TouchableOpacity key={label} style={{ alignItems: 'center' }} onPress={() => flashHint(`${label} settings`)}>
-              <Ionicons name={icon} size={22} color="#FFFFFF" />
+            <TouchableOpacity key={label} style={{ alignItems: 'center', minWidth: 46 }} onPress={() => handlePlayerTool(label)}>
+              <Ionicons name={icon} size={17} color="#FFFFFF" />
               <Text style={s.toolText}>{label}</Text>
             </TouchableOpacity>
           ))}
-        </View>
+        </View> : null}
       </View>
 
       <ScrollView contentContainerStyle={{ paddingBottom: 96 }}>

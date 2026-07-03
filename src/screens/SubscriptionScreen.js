@@ -18,6 +18,13 @@ const PLAN_COLORS = {
 }
 const PLAN_ICONS = { mobile: '📱', basic: '💻', standard: '⭐', premium: '👑' }
 
+const PAYMENT_GATEWAYS = [
+  { key: 'paystack', label: 'Paystack' },
+  { key: 'flutterwave', label: 'Flutterwave' },
+  { key: 'opay', label: 'OPay' },
+  { key: 'palmpay', label: 'PalmPay' },
+]
+
 export default function SubscriptionScreen({ navigation }) {
   const { theme } = useThemeStore()
   const { user, isAuthenticated } = useAuthStore()
@@ -100,15 +107,15 @@ export default function SubscriptionScreen({ navigation }) {
         {/* Gateway */}
         <View style={{ flexDirection: 'row', gap: 8, marginBottom: 20 }}>
           <Text style={{ color: c.textMuted, fontSize: 13, alignSelf: 'center' }}>Pay with:</Text>
-          {['paystack', 'flutterwave'].map((gw) => (
-            <TouchableOpacity key={gw} onPress={() => setGateway(gw)}
+          {PAYMENT_GATEWAYS.map((gw) => (
+            <TouchableOpacity key={gw.key} onPress={() => setGateway(gw.key)}
               style={{
                 paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
-                backgroundColor: gateway === gw ? c.primary : c.surface,
-                borderWidth: 1, borderColor: gateway === gw ? c.primary : c.border,
+                backgroundColor: gateway === gw.key ? c.primary : c.surface,
+                borderWidth: 1, borderColor: gateway === gw.key ? c.primary : c.border,
               }}>
-              <Text style={{ color: gateway === gw ? 'white' : c.textMuted, fontSize: 13, fontWeight: '600', textTransform: 'capitalize' }}>
-                {gw}
+              <Text style={{ color: gateway === gw.key ? 'white' : c.textMuted, fontSize: 13, fontWeight: '600' }}>
+                {gw.label}
               </Text>
             </TouchableOpacity>
           ))}
