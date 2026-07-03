@@ -60,20 +60,24 @@ function TopicPill({ icon, label, onPress }) {
   )
 }
 
-function ShortsAdItem({ itemHeight, isActive, onEnded }) {
+function ShortsAdItem({ itemHeight, isActive, onEnded, adType = 'nendplay' }) {
   useEffect(() => {
     if (!isActive) return undefined
     const timer = setTimeout(() => onEnded?.(), 15000)
     return () => clearTimeout(timer)
   }, [isActive, onEnded])
 
+  const renderAd = () => {
+    if (adType === 'banner') return <AdBanner style={{ marginHorizontal: 0, marginBottom: 0 }} />
+    if (adType === 'native') return <NativeAdvancedAd style={{ marginHorizontal: 0, marginBottom: 0 }} />
+    return <NendPlayAdCard placement="shorts" style={{ marginHorizontal: 0, marginBottom: 0 }} />
+  }
+
   return (
     <View style={[styles.shortPage, { height: itemHeight, justifyContent: 'center', paddingVertical: 24 }]}>
       <View style={styles.shortsAdShell}>
         <Text style={styles.shortsAdLabel}>SPONSORED</Text>
-        <NendPlayAdCard placement="shorts" style={{ marginHorizontal: 0, marginBottom: 12 }} />
-        <AdBanner style={{ marginHorizontal: 0 }} />
-        <NativeAdvancedAd style={{ marginHorizontal: 0, marginBottom: 0 }} />
+        {renderAd()}
       </View>
     </View>
   )
@@ -498,11 +502,18 @@ export default function ShortsScreen({ route }) {
   const viewabilityConfig = { itemVisiblePercentThreshold: 70 }
   const feedItems = useMemo(() => {
     const items = []
+    const adTypes = ['nendplay', 'banner', 'native']
     shorts.forEach((short, index) => {
-      if (index > 0 && (index === 1 || index % 4 === 0)) {
-        items.push({ _id: `shorts-ad-${index}`, isAd: true })
-      }
       items.push(short)
+      const playedCount = index + 1
+      if (playedCount % 5 === 0) {
+        const adNumber = playedCount / 5
+        items.push({
+          _id: `shorts-ad-${playedCount}`,
+          isAd: true,
+          adType: adTypes[(adNumber - 1) % adTypes.length],
+        })
+      }
     })
     return items
   }, [shorts])
@@ -587,6 +598,7 @@ export default function ShortsScreen({ route }) {
             <ShortsAdItem
               itemHeight={itemHeight}
               isActive={index === activeIndex}
+              adType={item.adType}
               onEnded={() => advanceToNext(index)}
             />
           ) : (
