@@ -69,6 +69,10 @@ function getFolder(asset) {
   return parts.length > 1 ? parts[parts.length - 2] : 'Device Music'
 }
 
+function getAssetKey(asset = {}) {
+  return asset.id || asset.uri || asset.localUri || asset.filename
+}
+
 function groupAssets(items, getKey) {
   return Object.values(items.reduce((acc, item) => {
     const key = getKey(item)
@@ -232,142 +236,6 @@ function Sidebar({ theme, visible, active, onClose, onSelect, selected }) {
   )
 }
 
-function NowPlayingDeck({ theme, asset, uri, queue, onNext, onPrev }) {
-  const c = theme.colors
-  const {
-    addHistory,
-    shuffle,
-    toggleShuffle,
-    repeatMode,
-    cycleRepeat,
-    toggleFavorite,
-    favorites,
-    setMusicQueue,
-  } = useDeviceMediaStore()
-  const [playing, setPlaying] = useState(true)
-  const [sleepTimer, setSleepTimer] = useState(null)
-
-  const player = useVideoPlayer(getSourceForUri(uri, asset?.filename), (player) => {
-    player.staysActiveInBackground = true
-    player.showNowPlayingNotification = true
-    player.audioMixingMode = 'auto'
-    player.play()
-  })
-
-  useEffect(() => {
-    if (!asset) return
-    addHistory(asset, 'audio')
-    setMusicQueue(queue)
-  }, [asset?.id, uri, queue.length])
-
-  useEffect(() => {
-    if (!sleepTimer) return undefined
-    const timer = setTimeout(() => {
-      player.pause()
-      setPlaying(false)
-      setSleepTimer(null)
-    }, sleepTimer * 60000)
-    return () => clearTimeout(timer)
-  }, [sleepTimer, uri])
-
-  const favorite = Boolean(favorites[asset?.id || asset?.uri])
-  const toggle = () => {
-    if (playing) {
-      player.pause()
-      setPlaying(false)
-    } else {
-      player.play()
-      setPlaying(true)
-    }
-  }
-
-  return (
-    <View style={{
-      padding: 18,
-      borderRadius: 28,
-      backgroundColor: c.surface,
-      borderWidth: 1,
-      borderColor: c.border,
-      overflow: 'hidden',
-    }}>
-      <View style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, opacity: 0.15, backgroundColor: c.primary }} />
-      <View style={{
-        alignSelf: 'center',
-        width: Math.min(260, width - 96),
-        aspectRatio: 1,
-        borderRadius: 26,
-        backgroundColor: c.bgDeep,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: c.border,
-      }}>
-        <Ionicons name="disc" size={92} color={c.textMuted} />
-      </View>
-
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 18 }}>
-        <View style={{ flex: 1 }}>
-          <Text style={{ color: c.text, fontSize: 22, fontWeight: '900' }} numberOfLines={2}>
-            {cleanTitle(asset?.filename || 'Select a song')}
-          </Text>
-          <Text style={{ color: c.textMuted, fontSize: 13, marginTop: 6 }}>NendPlay Music</Text>
-        </View>
-        {asset ? (
-          <TouchableOpacity onPress={() => toggleFavorite(asset)}>
-            <Ionicons name={favorite ? 'heart' : 'heart-outline'} size={26} color={favorite ? '#F43F5E' : c.textMuted} />
-          </TouchableOpacity>
-        ) : null}
-      </View>
-
-      <View style={{ height: 5, borderRadius: 3, backgroundColor: c.surfaceHigh, marginTop: 18, overflow: 'hidden' }}>
-        <View style={{ width: '34%', height: '100%', backgroundColor: c.primary }} />
-      </View>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
-        <Text style={{ color: c.textMuted, fontSize: 11 }}>1:24</Text>
-        <Text style={{ color: c.textMuted, fontSize: 11 }}>{formatDuration(asset?.duration || 176)}</Text>
-      </View>
-
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 22, marginTop: 18 }}>
-        <TouchableOpacity onPress={toggleShuffle} style={{ opacity: shuffle ? 1 : 0.45 }}>
-          <Ionicons name="shuffle" size={24} color={shuffle ? c.primary : c.text} />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={onPrev} style={{ padding: 8 }}>
-          <Ionicons name="play-skip-back" size={25} color={c.text} />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={toggle} style={{
-          width: 66,
-          height: 66,
-          borderRadius: 33,
-          backgroundColor: c.primary,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}>
-          <Ionicons name={playing ? 'pause' : 'play'} size={31} color="#FFFFFF" />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={onNext} style={{ padding: 8 }}>
-          <Ionicons name="play-skip-forward" size={25} color={c.text} />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={cycleRepeat}>
-          <Ionicons name="repeat" size={24} color={repeatMode === 'off' ? c.textMuted : c.primary} />
-        </TouchableOpacity>
-      </View>
-
-      <View style={{ flexDirection: 'row', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
-        {[15, 30, 60].map((mins) => (
-          <MusicChip
-            key={mins}
-            theme={theme}
-            active={sleepTimer === mins}
-            label={`${mins}m sleep`}
-            icon="moon-outline"
-            onPress={() => setSleepTimer(sleepTimer === mins ? null : mins)}
-          />
-        ))}
-      </View>
-    </View>
-  )
-}
-
 function SongArtwork({ theme, active = false, size = 54 }) {
   const c = theme.colors
   return (
@@ -426,7 +294,7 @@ function HorizontalCards({ theme, title, items, onPress, large = false }) {
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ gap: 12 }}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => getAssetKey(item)}
         renderItem={({ item }) => (
           <TouchableOpacity onPress={() => onPress(item)} style={{ width: large ? 136 : 116 }}>
             <SongArtwork theme={theme} size={large ? 136 : 116} />
@@ -498,11 +366,21 @@ function MusicHome({ theme, music, visibleSongs, rows, history, favorites, selec
   )
 }
 
-function MyMusic({ theme, music, visibleSongs, localTab, setLocalTab, sortMode, setSortMode, selected, favorites, openSong, loadMore, hasMore, loading }) {
+function MyMusic({ theme, music, visibleSongs, localTab, setLocalTab, sortMode, setSortMode, selected, favorites, history, playlists, openSong, loadMore, hasMore, loading }) {
   const c = theme.colors
+  const [openedGroup, setOpenedGroup] = useState(null)
+  const [quickMode, setQuickMode] = useState(null)
   const artists = useMemo(() => groupAssets(music, getArtist), [music])
   const albums = useMemo(() => groupAssets(music, getAlbum), [music])
   const folders = useMemo(() => groupAssets(music, getFolder), [music])
+  const favoriteSongs = useMemo(() => music.filter((item) => favorites[getAssetKey(item)]), [music, favorites])
+  const recentlyPlayedSongs = useMemo(() => {
+    const audioHistory = history.filter((item) => item.mediaType === 'audio')
+    return audioHistory
+      .map((entry) => music.find((item) => getAssetKey(item) === entry.id || item.uri === entry.uri))
+      .filter(Boolean)
+  }, [history, music])
+  const recentlyAddedSongs = useMemo(() => sortAssets(music, 'recent'), [music])
   const cards = [
     { label: 'Songs', value: music.length, icon: 'musical-note', tab: 'songs' },
     { label: 'Artists', value: artists.length, icon: 'person', tab: 'artists' },
@@ -511,7 +389,7 @@ function MyMusic({ theme, music, visibleSongs, localTab, setLocalTab, sortMode, 
   ]
 
   const renderGroup = (item, icon) => (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: c.border }}>
+    <TouchableOpacity onPress={() => setOpenedGroup(item)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: c.border }}>
       <View style={{ width: 52, height: 52, borderRadius: 15, backgroundColor: c.surface, alignItems: 'center', justifyContent: 'center' }}>
         <Ionicons name={icon} size={24} color={c.primary} />
       </View>
@@ -520,25 +398,67 @@ function MyMusic({ theme, music, visibleSongs, localTab, setLocalTab, sortMode, 
         <Text style={{ color: c.textMuted, fontSize: 12, marginTop: 4 }}>{item.count} song{item.count === 1 ? '' : 's'}</Text>
       </View>
       <Ionicons name="chevron-forward" size={18} color={c.textMuted} />
-    </View>
+    </TouchableOpacity>
   )
 
-  const data = localTab === 'artists' ? artists : localTab === 'albums' ? albums : localTab === 'folders' ? folders : visibleSongs
+  const quickSongs = quickMode === 'recentlyPlayed'
+    ? recentlyPlayedSongs
+    : quickMode === 'favorites'
+      ? favoriteSongs
+      : quickMode === 'recentlyAdded'
+        ? recentlyAddedSongs
+        : null
+  const data = openedGroup
+    ? openedGroup.items
+    : quickSongs
+      ? quickSongs
+      : localTab === 'artists'
+        ? artists
+        : localTab === 'albums'
+          ? albums
+          : localTab === 'folders'
+            ? folders
+            : visibleSongs
 
   return (
     <FlatList
       data={data}
-      keyExtractor={(item) => item.id}
+      keyExtractor={(item) => getAssetKey(item)}
       onEndReached={localTab === 'songs' ? loadMore : undefined}
       onEndReachedThreshold={0.65}
       contentContainerStyle={{ padding: 16, paddingBottom: 136 }}
       ListHeaderComponent={
         <>
+          {openedGroup || quickMode ? (
+            <TouchableOpacity
+              onPress={() => {
+                setOpenedGroup(null)
+                setQuickMode(null)
+              }}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+              <Ionicons name="arrow-back" size={22} color={c.text} />
+              <View>
+                <Text style={{ color: c.text, fontSize: 20, fontWeight: '900' }}>
+                  {openedGroup?.title || (quickMode === 'recentlyPlayed' ? 'Recently Played' : quickMode === 'favorites' ? 'Favorites' : 'Recently Added')}
+                </Text>
+                <Text style={{ color: c.textMuted, fontSize: 12 }}>
+                  {data.length} song{data.length === 1 ? '' : 's'}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          ) : null}
+
+          {!openedGroup && !quickMode ? (
+          <>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
             {cards.map((item) => (
               <TouchableOpacity
                 key={item.label}
-                onPress={() => setLocalTab(item.tab)}
+                onPress={() => {
+                  setOpenedGroup(null)
+                  setQuickMode(null)
+                  setLocalTab(item.tab)
+                }}
                 style={{
                   width: (width - 52) / 2,
                   padding: 14,
@@ -556,23 +476,44 @@ function MyMusic({ theme, music, visibleSongs, localTab, setLocalTab, sortMode, 
 
           <View style={{ gap: 8, marginBottom: 16 }}>
             {[
-              { label: 'Recently Played', value: 'Quick access', icon: 'time-outline' },
-              { label: 'Favorites', value: 'Liked songs', icon: 'heart' },
-              { label: 'Playlists', value: 'Create local mixes', icon: 'list' },
-              { label: 'Recently Added', value: 'Newest files', icon: 'add-circle-outline' },
+              { label: 'Recently Played', value: `${recentlyPlayedSongs.length} songs`, icon: 'time-outline', mode: 'recentlyPlayed' },
+              { label: 'Favorites', value: `${favoriteSongs.length} liked songs`, icon: 'heart', mode: 'favorites' },
+              { label: 'Playlists', value: `${playlists.length} playlists`, icon: 'list', mode: 'playlists' },
+              { label: 'Recently Added', value: `${recentlyAddedSongs.length} newest files`, icon: 'add-circle-outline', mode: 'recentlyAdded' },
             ].map((row) => (
-              <View key={row.label} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 13, borderRadius: 14, backgroundColor: c.surface, borderWidth: 1, borderColor: c.border }}>
+              <TouchableOpacity
+                key={row.label}
+                onPress={() => {
+                  if (row.mode === 'playlists') {
+                    setLocalTab('songs')
+                    setQuickMode(null)
+                    setOpenedGroup({
+                      id: 'playlists',
+                      title: 'Playlists',
+                      count: music.length,
+                      items: playlists.length
+                        ? music.filter((item) => playlists.some((playlist) => playlist.assets?.includes(getAssetKey(item))))
+                        : music,
+                    })
+                    return
+                  }
+                  setOpenedGroup(null)
+                  setQuickMode(row.mode)
+                }}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 13, borderRadius: 14, backgroundColor: c.surface, borderWidth: 1, borderColor: c.border }}>
                 <Ionicons name={row.icon} size={20} color={c.primary} />
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: c.text, fontWeight: '900' }}>{row.label}</Text>
                   <Text style={{ color: c.textMuted, fontSize: 11 }}>{row.value}</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={c.textMuted} />
-              </View>
+              </TouchableOpacity>
             ))}
           </View>
+          </>
+          ) : null}
 
-          <FlatList
+          {!openedGroup && !quickMode ? <FlatList
             data={LOCAL_TABS}
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -581,9 +522,9 @@ function MyMusic({ theme, music, visibleSongs, localTab, setLocalTab, sortMode, 
             renderItem={({ item }) => (
               <MusicChip theme={theme} active={localTab === item.key} label={item.label} onPress={() => setLocalTab(item.key)} />
             )}
-          />
+          /> : null}
 
-          {localTab === 'songs' ? (
+          {!openedGroup && !quickMode && localTab === 'songs' ? (
             <>
               <FlatList
                 data={SORT_OPTIONS}
@@ -609,7 +550,7 @@ function MyMusic({ theme, music, visibleSongs, localTab, setLocalTab, sortMode, 
         <EmptyState theme={theme} icon="musical-notes-outline" title="No music found" body="Allow audio access or add songs to your phone storage." />
       )}
       renderItem={({ item, index }) => (
-        localTab === 'songs'
+        openedGroup || quickMode || localTab === 'songs'
           ? (
             <SongRow
               theme={theme}
@@ -644,7 +585,7 @@ function SearchSection({ theme, query, setQuery, results, selected, favorites, o
   return (
     <FlatList
       data={results}
-      keyExtractor={(item) => item.id}
+      keyExtractor={(item) => getAssetKey(item)}
       contentContainerStyle={{ padding: 16, paddingBottom: 136 }}
       ListHeaderComponent={
         <>
@@ -734,65 +675,80 @@ function MiniPlayer({ theme, selected, onOpen, onNext }) {
   )
 }
 
-function FullPlayerModalContent({ theme, selected, onNext, onPrev }) {
+function FullPlayerModalContent({ theme, selected, playing, position, duration, favorite, repeatMode, shuffle, onClose, onToggle, onNext, onPrev, onSeek, onFavorite, onShuffle, onRepeat }) {
   const c = theme.colors
   if (!selected) return null
+  const safeDuration = duration || selected.duration || 0
+  const progress = safeDuration ? Math.max(0, Math.min(100, (position / safeDuration) * 100)) : 0
   return (
-    <View style={{
-      padding: 18,
-      borderRadius: 28,
-      backgroundColor: c.surface,
-      borderWidth: 1,
-      borderColor: c.border,
-      overflow: 'hidden',
-    }}>
-      <View style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, opacity: 0.15, backgroundColor: c.primary }} />
+    <View style={{ flex: 1, padding: 18 }}>
+      <View style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, opacity: 0.22, backgroundColor: c.primary }} />
+      <TouchableOpacity onPress={onClose} style={{ width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' }}>
+        <Ionicons name="chevron-down" size={30} color={c.text} />
+      </TouchableOpacity>
       <View style={{
         alignSelf: 'center',
-        width: Math.min(260, width - 96),
+        width: Math.min(300, width - 58),
         aspectRatio: 1,
-        borderRadius: 26,
-        backgroundColor: c.bgDeep,
+        borderRadius: 18,
+        backgroundColor: c.surface,
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 1,
         borderColor: c.border,
+        marginTop: 18,
       }}>
-        <Ionicons name="disc" size={92} color={c.textMuted} />
+        <Ionicons name="disc" size={118} color={c.textMuted} />
       </View>
-      <Text style={{ color: c.text, fontSize: 24, fontWeight: '900', marginTop: 22 }} numberOfLines={2}>
+      <Text style={{ color: c.text, fontSize: 25, fontWeight: '900', marginTop: 28 }} numberOfLines={2}>
         {cleanTitle(selected.filename)}
       </Text>
       <Text style={{ color: c.textMuted, fontSize: 14, marginTop: 6 }}>{getArtist(selected)}</Text>
-      <View style={{ height: 5, borderRadius: 3, backgroundColor: c.surfaceHigh, marginTop: 22, overflow: 'hidden' }}>
-        <View style={{ width: '34%', height: '100%', backgroundColor: c.primary }} />
-      </View>
+      <TouchableOpacity
+        onPress={(event) => {
+          const ratio = (event.nativeEvent.locationX || 0) / Math.max(1, width - 36)
+          onSeek(safeDuration * ratio)
+        }}
+        style={{ height: 5, borderRadius: 3, backgroundColor: c.surfaceHigh, marginTop: 24, overflow: 'hidden' }}>
+        <View style={{ width: `${progress}%`, height: '100%', backgroundColor: c.primary }} />
+      </TouchableOpacity>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
-        <Text style={{ color: c.textMuted, fontSize: 11 }}>1:24</Text>
-        <Text style={{ color: c.textMuted, fontSize: 11 }}>{formatDuration(selected.duration || 176)}</Text>
+        <Text style={{ color: c.textMuted, fontSize: 11 }}>{formatDuration(position)}</Text>
+        <Text style={{ color: c.textMuted, fontSize: 11 }}>{formatDuration(safeDuration)}</Text>
       </View>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 30, marginTop: 26 }}>
-        <Ionicons name="shuffle" size={24} color={c.textMuted} />
-        <TouchableOpacity onPress={onPrev} style={{ padding: 8 }}>
-          <Ionicons name="play-skip-back" size={28} color={c.text} />
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 26 }}>
+        <TouchableOpacity onPress={onFavorite}><Ionicons name={favorite ? 'heart' : 'heart-outline'} size={27} color={favorite ? '#F43F5E' : c.textMuted} /></TouchableOpacity>
+        <Ionicons name="add-circle-outline" size={27} color={c.textMuted} />
+        <Ionicons name="download-outline" size={27} color={c.textMuted} />
+        <Ionicons name="list" size={27} color={c.textMuted} />
+        <Ionicons name="ellipsis-vertical" size={27} color={c.textMuted} />
+      </View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 38 }}>
+        <TouchableOpacity onPress={onShuffle} style={{ opacity: shuffle ? 1 : 0.5 }}>
+          <Ionicons name="shuffle" size={26} color={shuffle ? c.primary : c.text} />
         </TouchableOpacity>
-        <View style={{
-          width: 68,
-          height: 68,
-          borderRadius: 34,
-          backgroundColor: c.primary,
+        <TouchableOpacity onPress={onPrev} style={{ padding: 8 }}>
+          <Ionicons name="play-skip-back" size={34} color={c.text} />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => onToggle()} style={{
+          width: 78,
+          height: 78,
+          borderRadius: 39,
+          backgroundColor: '#FFFFFF',
           alignItems: 'center',
           justifyContent: 'center',
         }}>
-          <Ionicons name="pause" size={32} color="#FFFFFF" />
-        </View>
-        <TouchableOpacity onPress={onNext} style={{ padding: 8 }}>
-          <Ionicons name="play-skip-forward" size={28} color={c.text} />
+          <Ionicons name={playing ? 'pause' : 'play'} size={38} color={c.bgDeep} />
         </TouchableOpacity>
-        <Ionicons name="repeat" size={24} color={c.primary} />
+        <TouchableOpacity onPress={onNext} style={{ padding: 8 }}>
+          <Ionicons name="play-skip-forward" size={34} color={c.text} />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={onRepeat}>
+          <Ionicons name="repeat" size={26} color={repeatMode === 'off' ? c.textMuted : c.primary} />
+        </TouchableOpacity>
       </View>
-      <Text style={{ color: c.textMuted, textAlign: 'center', marginTop: 18, fontSize: 12 }}>
-        Playback continues from the mini-player while this screen gives a full music view.
+      <Text style={{ color: c.textMuted, textAlign: 'center', marginTop: 28, fontSize: 13 }}>
+        Lyrics
       </Text>
     </View>
   )
@@ -808,7 +764,26 @@ export default function MusicExperience({ theme, music, loading, loadMore, hasMo
   const [playerOpen, setPlayerOpen] = useState(false)
   const [selected, setSelected] = useState(null)
   const [selectedUri, setSelectedUri] = useState('')
-  const { shuffle, repeatMode, history, favorites } = useDeviceMediaStore()
+  const [playing, setPlaying] = useState(false)
+  const [position, setPosition] = useState(0)
+  const [duration, setDuration] = useState(0)
+  const {
+    shuffle,
+    repeatMode,
+    history,
+    favorites,
+    playlists,
+    addHistory,
+    setMusicQueue,
+    toggleFavorite,
+    toggleShuffle,
+    cycleRepeat,
+  } = useDeviceMediaStore()
+  const player = useVideoPlayer(null, (player) => {
+    player.staysActiveInBackground = true
+    player.showNowPlayingNotification = true
+    player.audioMixingMode = 'auto'
+  })
 
   const visibleSongs = useMemo(() => (
     sortAssets(searchAssets(music, mainSection === 'search' ? query : ''), sortMode)
@@ -821,6 +796,56 @@ export default function MusicExperience({ theme, music, loading, loadMore, hasMo
   const openSong = (asset) => {
     setSelected(asset)
     setSelectedUri(asset.localUri || asset.uri)
+  }
+
+  useEffect(() => {
+    if (!selected || !selectedUri) return
+    try {
+      player.staysActiveInBackground = true
+      player.showNowPlayingNotification = true
+      player.audioMixingMode = 'auto'
+      player.replace(getSourceForUri(selectedUri, selected.filename))
+      player.play()
+      setPlaying(true)
+      addHistory(selected, 'audio')
+      setMusicQueue(visibleSongs.length ? visibleSongs : music)
+    } catch {}
+  }, [selectedUri, selected?.id])
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      try {
+        const current = Number(player.currentTime || 0)
+        const total = Number(player.duration || selected?.duration || 0)
+        setPosition(current)
+        setDuration(total)
+        setPlaying(Boolean(player.playing))
+        if (total > 0 && current >= Math.max(1, total - 0.5)) {
+          if (repeatMode === 'one' && selected) {
+            player.currentTime = 0
+            player.play()
+            return
+          }
+          playNext()
+        }
+      } catch {}
+    }, 700)
+    return () => clearInterval(timer)
+  }, [player, selected?.id, repeatMode, visibleSongs.length, music.length])
+
+  const togglePlayback = (forced) => {
+    try {
+      const shouldPlay = typeof forced === 'boolean' ? forced : !playing
+      if (shouldPlay) player.play()
+      else player.pause()
+      setPlaying(shouldPlay)
+    } catch {}
+  }
+
+  const seekTo = (seconds) => {
+    try {
+      player.currentTime = Math.max(0, Math.min(seconds || 0, duration || selected?.duration || 0))
+    } catch {}
   }
 
   const playNext = () => {
@@ -856,6 +881,8 @@ export default function MusicExperience({ theme, music, loading, loadMore, hasMo
           setSortMode={setSortMode}
           selected={selected}
           favorites={favorites}
+          history={history}
+          playlists={playlists}
           openSong={openSong}
           loadMore={loadMore}
           hasMore={hasMore}
@@ -951,29 +978,29 @@ export default function MusicExperience({ theme, music, loading, loadMore, hasMo
 
       {renderContent()}
 
-      {selectedUri ? (
-        <View style={{ position: 'absolute', left: -10000, top: -10000, width: 1, height: 1 }}>
-          <NowPlayingDeck
-            key={selectedUri}
-            theme={theme}
-            asset={selected}
-            uri={selectedUri}
-            queue={visibleSongs}
-            onNext={playNext}
-            onPrev={playPrev}
-          />
-        </View>
-      ) : null}
-
       <MiniPlayer theme={theme} selected={selected} onOpen={() => setPlayerOpen(true)} onNext={playNext} />
       <Sidebar theme={theme} visible={sidebarOpen} active={mainSection} onClose={() => setSidebarOpen(false)} onSelect={setMainSection} selected={selected} />
 
       <Modal visible={playerOpen} animationType="slide" onRequestClose={() => setPlayerOpen(false)}>
-        <View style={{ flex: 1, backgroundColor: c.bgDeep, paddingTop: 46, paddingHorizontal: 16 }}>
-          <TouchableOpacity onPress={() => setPlayerOpen(false)} style={{ width: 42, height: 42, borderRadius: 16, backgroundColor: c.surface, alignItems: 'center', justifyContent: 'center', marginBottom: 18 }}>
-            <Ionicons name="chevron-down" size={24} color={c.text} />
-          </TouchableOpacity>
-          <FullPlayerModalContent theme={theme} selected={selected} onNext={playNext} onPrev={playPrev} />
+        <View style={{ flex: 1, backgroundColor: c.bgDeep, paddingTop: 34 }}>
+          <FullPlayerModalContent
+            theme={theme}
+            selected={selected}
+            playing={playing}
+            position={position}
+            duration={duration}
+            favorite={Boolean(favorites[getAssetKey(selected)])}
+            repeatMode={repeatMode}
+            shuffle={shuffle}
+            onClose={() => setPlayerOpen(false)}
+            onToggle={togglePlayback}
+            onNext={playNext}
+            onPrev={playPrev}
+            onSeek={seekTo}
+            onFavorite={() => selected && toggleFavorite(selected)}
+            onShuffle={toggleShuffle}
+            onRepeat={cycleRepeat}
+          />
         </View>
       </Modal>
     </View>
