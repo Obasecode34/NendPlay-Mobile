@@ -358,6 +358,7 @@ export default function MediaPlayerScreen({ route, navigation }) {
 
   const openFullscreen = async () => {
     try {
+      setControlsVisible(false)
       await videoViewRef.current?.enterFullscreen?.()
     } catch {
       flashHint('Fullscreen is unavailable on this device')
@@ -636,7 +637,11 @@ export default function MediaPlayerScreen({ route, navigation }) {
               contentFit="cover"
               allowsPictureInPicture
               startsPictureInPictureAutomatically
-              fullscreenOptions={{ enable: true }}
+              fullscreenOptions={{
+                enable: true,
+                orientation: 'landscape',
+                autoExitOnRotate: false,
+              }}
               onError={() => Alert.alert('Playback Error', 'Unable to play this media right now. Please try again.')}
             />
 
