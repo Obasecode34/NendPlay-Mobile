@@ -8,6 +8,7 @@ import {
 import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as DocumentPicker from 'expo-document-picker'
+import * as ImagePicker from 'expo-image-picker'
 import * as Device from 'expo-device'
 import useThemeStore from '../stores/themeStore'
 import useAuthStore from '../services/authStore.native'
@@ -125,7 +126,7 @@ export default function NovelHubScreen() {
   const [showUpload, setShowUpload] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [uploadForm, setUploadForm] = useState({
-    title: '', author: '', description: '', category: 'fiction', file: null,
+    title: '', author: '', description: '', category: 'fiction', file: null, thumbnailFile: null,
     language: 'English', rightsConfirmed: false, contentOrigin: 'publisher_submission',
     licenseType: 'unknown', sourceName: '', sourceUrl: '', licenseUrl: '',
     attributionText: '', rightsSummary: '', requiresAttribution: false,
@@ -169,6 +170,27 @@ export default function NovelHubScreen() {
     } catch { Alert.alert('Error', 'Failed to pick file') }
   }
 
+  const handlePickThumbnail = async () => {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
+      if (!permission.granted) {
+        Alert.alert('Permission required', 'Allow photo access to choose a NovelHub thumbnail.')
+        return
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.88,
+        allowsEditing: true,
+        aspect: [2, 3],
+      })
+      if (!result.canceled && result.assets?.[0]) {
+        setUploadForm({ ...uploadForm, thumbnailFile: result.assets[0] })
+      }
+    } catch {
+      Alert.alert('Error', 'Failed to pick thumbnail')
+    }
+  }
+
   const handleUpload = async () => {
     if (!uploadForm.file || !uploadForm.title) {
       Alert.alert('Error', 'Please provide a title and PDF file')
@@ -190,6 +212,13 @@ export default function NovelHubScreen() {
         name: uploadForm.file.name,
         type: uploadForm.file.mimeType || 'application/pdf',
       })
+      if (uploadForm.thumbnailFile) {
+        formData.append('thumbnail', {
+          uri: uploadForm.thumbnailFile.uri,
+          name: uploadForm.thumbnailFile.fileName || `novelhub-thumbnail-${Date.now()}.jpg`,
+          type: uploadForm.thumbnailFile.mimeType || 'image/jpeg',
+        })
+      }
       formData.append('title', uploadForm.title)
       formData.append('author', uploadForm.author)
       formData.append('description', uploadForm.description)
@@ -209,7 +238,7 @@ export default function NovelHubScreen() {
       Alert.alert('Submitted for review', 'PDF uploaded. It will appear in NovelHub after admin approval.')
       setShowUpload(false)
       setUploadForm({
-        title: '', author: '', description: '', category: 'fiction', file: null,
+        title: '', author: '', description: '', category: 'fiction', file: null, thumbnailFile: null,
         language: 'English', rightsConfirmed: false, contentOrigin: 'publisher_submission',
         licenseType: 'unknown', sourceName: '', sourceUrl: '', licenseUrl: '',
         attributionText: '', rightsSummary: '', requiresAttribution: false,
@@ -304,6 +333,7 @@ export default function NovelHubScreen() {
       if (res.data.data.download?._id) {
         await downloadService.complete({
           downloadId: res.data.data.download._id,
+          deviceId,
           storageKey: savedFile.storageKey,
           storedFileSize: savedFile.storedFileSize || item.fileSize || res.data.data.fileSize || 0,
         })
@@ -1087,6 +1117,26 @@ export default function NovelHubScreen() {
                 </Text>
                 <Text style={{ color: c.textMuted, fontSize: 12, marginTop: 4 }}>
                   PDF documents only for NovelHub
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{
+                  borderWidth: 2,
+                  borderColor: uploadForm.thumbnailFile ? c.primary : c.border,
+                  borderStyle: 'dashed',
+                  borderRadius: 12,
+                  padding: 16,
+                  alignItems: 'center',
+                  marginBottom: 16,
+                }}
+                onPress={handlePickThumbnail}>
+                <Ionicons name="image-outline" size={26} color={c.primary} />
+                <Text style={{ color: c.text, fontSize: 14, marginTop: 8, fontWeight: '900' }}>
+                  {uploadForm.thumbnailFile ? (uploadForm.thumbnailFile.fileName || 'Thumbnail selected') : 'Tap to select thumbnail'}
+                </Text>
+                <Text style={{ color: c.textMuted, fontSize: 12, marginTop: 4 }}>
+                  Optional JPG, PNG, or WebP cover image
                 </Text>
               </TouchableOpacity>
 

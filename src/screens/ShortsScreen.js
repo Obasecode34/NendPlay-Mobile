@@ -222,7 +222,7 @@ function ShortItem({ item, isActive, theme, itemHeight, onPausedChange, onEnded 
         return
       }
 
-      const fileUrl = mediaService.getStreamUrl(item._id) || res.data.data.fileUrl
+      const fileUrl = res.data.data.fileUrl || mediaService.getStreamUrl(item._id)
       const forceHls = Boolean(
         item.hlsUrl ||
         item.playbackIds?.length ||
@@ -255,6 +255,7 @@ function ShortItem({ item, isActive, theme, itemHeight, onPausedChange, onEnded 
       if (res.data.data.download?._id) {
         await downloadService.complete({
           downloadId: res.data.data.download._id,
+          deviceId,
           storageKey: savedFile.storageKey,
           storedFileSize: savedFile.storedFileSize || item.fileSize || res.data.data.fileSize || 0,
         })

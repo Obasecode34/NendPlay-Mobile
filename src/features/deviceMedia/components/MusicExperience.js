@@ -13,7 +13,6 @@ import { useVideoPlayer } from 'expo-video'
 import { Ionicons } from '@expo/vector-icons'
 import useDeviceMediaStore from '../stores/deviceMediaStore'
 import AdBanner from '../../../components/ads/AdBanner'
-import NativeAdvancedAd from '../../../components/ads/NativeAdvancedAd'
 import NendPlayAdCard from '../../../components/ads/NendPlayAdCard'
 import {
   SORT_OPTIONS,
@@ -134,7 +133,6 @@ function DeviceMusicAdStack({ theme, compact = false }) {
     }}>
       <NendPlayAdCard placement="media" style={{ marginHorizontal: 0, marginBottom: 0 }} />
       <AdBanner style={{ marginHorizontal: 0, marginBottom: 0 }} horizontalPadding={64} />
-      <NativeAdvancedAd style={{ marginHorizontal: 0, marginBottom: 0 }} />
     </View>
   )
 }
@@ -779,7 +777,7 @@ export default function MusicExperience({ theme, music, loading, loadMore, hasMo
     toggleShuffle,
     cycleRepeat,
   } = useDeviceMediaStore()
-  const player = useVideoPlayer(null, (player) => {
+  const player = useVideoPlayer(undefined, (player) => {
     player.staysActiveInBackground = true
     player.showNowPlayingNotification = true
     player.audioMixingMode = 'auto'
@@ -794,8 +792,11 @@ export default function MusicExperience({ theme, music, loading, loadMore, hasMo
   const selectedIndex = selected ? visibleSongs.findIndex((item) => item.id === selected.id) : -1
 
   const openSong = (asset) => {
+    if (!asset) return
+    const uri = asset.localUri || asset.uri
+    if (!uri) return
     setSelected(asset)
-    setSelectedUri(asset.localUri || asset.uri)
+    setSelectedUri(uri)
   }
 
   useEffect(() => {

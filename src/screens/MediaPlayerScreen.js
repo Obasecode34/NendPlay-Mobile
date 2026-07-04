@@ -232,6 +232,7 @@ export default function MediaPlayerScreen({ route, navigation }) {
       if (res.data.data.download?._id) {
         await downloadService.complete({
           downloadId: res.data.data.download._id,
+          deviceId,
           storageKey: savedFile.storageKey,
           storedFileSize: savedFile.storedFileSize || media?.fileSize || res.data.data.fileSize || 0,
         })
