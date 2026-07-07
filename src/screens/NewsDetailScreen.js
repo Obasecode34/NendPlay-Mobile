@@ -498,8 +498,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '900',
   },
-  heroImage: { width: '100%', height: 290, backgroundColor: BORDER },
-  heroFallback: { width: '100%', height: 260, alignItems: 'center', justifyContent: 'center' },
+  heroImage: { width: '100%', aspectRatio: 16 / 9, backgroundColor: BORDER },
+  heroFallback: { width: '100%', aspectRatio: 16 / 9, alignItems: 'center', justifyContent: 'center' },
   heroPlay: {
     position: 'absolute',
     left: '50%',
@@ -517,7 +517,7 @@ const styles = StyleSheet.create({
     shadowRadius: 18,
     elevation: 8,
   },
-  video: { width: '100%', height: 290, backgroundColor: '#000' },
+  video: { width: '100%', aspectRatio: 16 / 9, backgroundColor: '#000' },
   audioCard: {
     borderWidth: 1,
     borderColor: BORDER,
@@ -529,7 +529,7 @@ const styles = StyleSheet.create({
   audioHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
   audioTitle: { color: MUTED, fontSize: 14, fontWeight: '800' },
   audio: { width: '100%', height: 56, backgroundColor: '#101022', borderRadius: 12 },
-  image: { width: '100%', height: 240, backgroundColor: BORDER, marginBottom: 18, borderRadius: 16 },
+  image: { width: '100%', aspectRatio: 16 / 9, backgroundColor: BORDER, marginBottom: 18, borderRadius: 16 },
   paragraph: { color: '#111827', fontSize: 17, lineHeight: 27, marginBottom: 20 },
   quoteBlock: { borderLeftWidth: 3, borderLeftColor: BLUE, paddingLeft: 14, marginBottom: 20 },
   quoteText: { color: '#111827', fontSize: 17, lineHeight: 28, fontStyle: 'italic' },

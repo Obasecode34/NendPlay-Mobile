@@ -598,9 +598,10 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   newsImageWrap: {
-    height: 156,
+    aspectRatio: 16 / 9,
     backgroundColor: '#DDE3EA',
     position: 'relative',
+    overflow: 'hidden',
   },
   newsImage: { width: '100%', height: '100%' },
   categoryPill: {
@@ -653,7 +654,7 @@ const styles = StyleSheet.create({
   feedAdBanner: { marginBottom: 8 },
   feedNativeAd: { marginHorizontal: 0 },
   heroStory: { paddingHorizontal: 16, paddingBottom: 15 },
-  heroImage: { width: '100%', height: 158, borderRadius: 13, backgroundColor: '#DDE3EA' },
+  heroImage: { width: '100%', aspectRatio: 16 / 9, borderRadius: 13, backgroundColor: '#DDE3EA' },
   emptyImage: { alignItems: 'center', justifyContent: 'center' },
   storyBody: { paddingTop: 10 },
   sourceRow: { flexDirection: 'row', alignItems: 'center', minHeight: 21 },
