@@ -952,6 +952,35 @@ export default function HomeScreen({ navigation }) {
       backgroundColor: 'rgba(255,255,255,0.16)',
     },
     subscribeText: { color: '#FFFFFF', fontSize: 12, fontWeight: '900' },
+    floatingNewsButton: {
+      position: 'absolute',
+      right: 16,
+      bottom: Math.max(insets.bottom + 74, 86),
+      width: 52,
+      height: 52,
+      borderRadius: 26,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: c.primary,
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.26)',
+      shadowColor: c.primary,
+      shadowOpacity: 0.45,
+      shadowRadius: 14,
+      shadowOffset: { width: 0, height: 7 },
+      elevation: 10,
+    },
+    floatingNewsBadge: {
+      position: 'absolute',
+      top: -3,
+      right: -2,
+      width: 17,
+      height: 17,
+      borderRadius: 9,
+      backgroundColor: '#EF4444',
+      borderWidth: 2,
+      borderColor: c.bg,
+    },
   })
 
   return (
@@ -1272,6 +1301,15 @@ export default function HomeScreen({ navigation }) {
           <View style={{ height: 20 }} />
         </ScrollView>
       )}
+      <TouchableOpacity
+        activeOpacity={0.86}
+        onPress={() => navigation.navigate('DailyNews')}
+        style={s.floatingNewsButton}
+        accessibilityRole="button"
+        accessibilityLabel="Open news">
+        <Ionicons name="newspaper" size={24} color="#FFFFFF" />
+        <View style={s.floatingNewsBadge} />
+      </TouchableOpacity>
     </View>
   )
 }
