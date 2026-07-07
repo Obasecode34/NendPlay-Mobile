@@ -8,6 +8,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as Location from 'expo-location'
 import useAuthStore from '../services/authStore.native'
 import { newsService } from '../services/index'
+import AdBanner from '../components/ads/AdBanner'
+import NendPlayAdCard from '../components/ads/NendPlayAdCard'
 
 const TABS = [
   { key: 'for-you', label: 'For you' },
@@ -196,6 +198,15 @@ function SectionTitle({ children }) {
     <View style={styles.sectionTitleWrap}>
       <Text style={styles.sectionTitle}>{children}</Text>
       <Ionicons name="chevron-forward" size={25} color={BLUE} />
+    </View>
+  )
+}
+
+function NewsFeedAd() {
+  return (
+    <View style={styles.feedAdWrap}>
+      <AdBanner style={styles.feedAdBanner} />
+      <NendPlayAdCard placement="news" style={styles.feedNativeAd} />
     </View>
   )
 }
@@ -432,6 +443,7 @@ export default function DailyNewsScreen({ navigation }) {
       {topStory ? <HeroStory item={topStory} onPress={openArticle} /> : null}
       {secondStory ? <CompactStory item={secondStory} onPress={openArticle} /> : null}
       <RelatedRail items={relatedStories} onPress={openArticle} />
+      {(topStory || secondStory || relatedStories.length) ? <NewsFeedAd /> : null}
       {activeTab === 'for-you' && remainingStories.length > 0 ? (
         <View style={styles.picksHeader}>
           <Text style={styles.picksText}>Picks for you</Text>
@@ -446,9 +458,12 @@ export default function DailyNewsScreen({ navigation }) {
         data={remainingStories}
         keyExtractor={(item, index) => `${item.id}-${index}`}
         renderItem={({ item, index }) => (
-          index % 3 === 0
-            ? <HeroStory item={item} onPress={openArticle} />
-            : <CompactStory item={item} onPress={openArticle} />
+          <>
+            {index % 3 === 0
+              ? <HeroStory item={item} onPress={openArticle} />
+              : <CompactStory item={item} onPress={openArticle} />}
+            {(index + 1) % 4 === 0 ? <NewsFeedAd /> : null}
+          </>
         )}
         ListHeaderComponent={header}
         ListEmptyComponent={
@@ -571,69 +586,72 @@ const styles = StyleSheet.create({
   categorySub: { color: MUTED, fontSize: 12, marginTop: 4 },
   newsCard: {
     marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 10,
-    borderRadius: 24,
+    marginTop: 12,
+    marginBottom: 8,
+    borderRadius: 18,
     backgroundColor: '#FFFFFF',
     overflow: 'hidden',
     shadowColor: '#0F172A',
-    shadowOpacity: 0.16,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 7,
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 5,
   },
   newsImageWrap: {
-    height: 218,
+    height: 156,
     backgroundColor: '#DDE3EA',
     position: 'relative',
   },
   newsImage: { width: '100%', height: '100%' },
   categoryPill: {
     position: 'absolute',
-    top: 18,
-    left: 18,
+    top: 12,
+    left: 12,
     maxWidth: '70%',
-    paddingHorizontal: 18,
-    paddingVertical: 9,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 999,
     backgroundColor: BLUE,
   },
   categoryPillText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 10,
     fontWeight: '900',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
     textTransform: 'uppercase',
   },
-  newsCardBody: { padding: 20 },
-  newsMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 14 },
-  newsMetaItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  newsMetaText: { color: '#5F6B7A', fontSize: 13, fontWeight: '700' },
-  newsMetaDot: { color: '#5F6B7A', fontSize: 16, fontWeight: '900' },
+  newsCardBody: { padding: 14 },
+  newsMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 9 },
+  newsMetaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  newsMetaText: { color: '#5F6B7A', fontSize: 11, fontWeight: '700' },
+  newsMetaDot: { color: '#5F6B7A', fontSize: 13, fontWeight: '900' },
   newsCardTitle: {
     color: '#07162B',
-    fontSize: 25,
-    lineHeight: 32,
+    fontSize: 19,
+    lineHeight: 24,
     fontWeight: '900',
   },
   newsCardExcerpt: {
     color: '#64748B',
-    fontSize: 15,
-    lineHeight: 24,
-    marginTop: 14,
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: 9,
   },
   newsFooter: {
-    marginTop: 18,
-    paddingTop: 16,
+    marginTop: 12,
+    paddingTop: 11,
     borderTopWidth: 1,
     borderTopColor: '#E2E8F0',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  readMoreRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  readMoreText: { color: '#1354C8', fontSize: 16, fontWeight: '900' },
-  bookmarkButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  readMoreRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  readMoreText: { color: '#1354C8', fontSize: 14, fontWeight: '900' },
+  bookmarkButton: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
+  feedAdWrap: { marginHorizontal: 16, marginTop: 10, marginBottom: 8 },
+  feedAdBanner: { marginBottom: 8 },
+  feedNativeAd: { marginHorizontal: 0 },
   heroStory: { paddingHorizontal: 16, paddingBottom: 15 },
   heroImage: { width: '100%', height: 158, borderRadius: 13, backgroundColor: '#DDE3EA' },
   emptyImage: { alignItems: 'center', justifyContent: 'center' },
