@@ -18,6 +18,15 @@ const MUTED = '#777C86'
 const BORDER = '#ECEEF2'
 const PUBLIC_WEB_URL = 'https://nendplay.com'
 
+function formatDate(value) {
+  if (!value) return 'Today'
+  try {
+    return new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(value))
+  } catch {
+    return 'Today'
+  }
+}
+
 function timeAgo(value) {
   if (!value) return 'Today'
   const diff = Date.now() - new Date(value).getTime()
@@ -28,6 +37,21 @@ function timeAgo(value) {
   if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`
   const days = Math.floor(hours / 24)
   return days === 1 ? 'Yesterday' : `${days} days ago`
+}
+
+function estimateReadTime(text) {
+  const words = String(text || '').trim().split(/\s+/).filter(Boolean).length
+  return `${Math.max(1, Math.ceil(words / 220))} min read`
+}
+
+function getCategory(post) {
+  const value = post?.categories?.[0] || post?.category || post?.section || 'News'
+  return String(value).replace(/[-_]/g, ' ')
+}
+
+function isQuoteParagraph(text) {
+  const trimmed = String(text || '').trim()
+  return trimmed.startsWith('"') || trimmed.startsWith('“') || trimmed.startsWith("'") || trimmed.startsWith('‘')
 }
 
 function NewsVideo({ item }) {
@@ -225,6 +249,12 @@ export default function NewsDetailScreen({ route, navigation }) {
   }
 
   const comments = post.comments || []
+  const category = getCategory(post)
+  const heroVideo = videos[0]
+  const heroImage = images[0]
+  const remainingVideos = videos.slice(1)
+  const remainingImages = images.slice(heroImage ? 1 : 0)
+  const readTime = estimateReadTime(post.body)
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -235,31 +265,77 @@ export default function NewsDetailScreen({ route, navigation }) {
           <View>
             <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
               <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
-                <Ionicons name="chevron-back" size={28} color={TEXT} />
+                <Ionicons name="chevron-back" size={27} color="#090D1C" />
               </TouchableOpacity>
-              <Text style={styles.headerBrand}>NendPlay News</Text>
-              <TouchableOpacity onPress={sharePost} style={styles.headerButton}>
-                <Ionicons name="share-social-outline" size={25} color={TEXT} />
-              </TouchableOpacity>
+              <Text style={styles.headerBrand}><Text style={styles.headerBrandAccent}>NendPlay</Text> News</Text>
+              <View style={styles.headerActions}>
+                <TouchableOpacity onPress={() => Alert.alert('Search', 'News search is available from the news feed.')} style={styles.headerButton}>
+                  <Ionicons name="search-outline" size={24} color="#090D1C" />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={sharePost} style={styles.headerButton}>
+                  <Ionicons name="ellipsis-vertical" size={22} color="#090D1C" />
+                </TouchableOpacity>
+              </View>
             </View>
 
             <View style={styles.article}>
+              <Text style={styles.categoryPill}>{category.toUpperCase()}</Text>
               <Text style={styles.title}>{post.header || post.title}</Text>
               {post.subHeader ? <Text style={styles.subTitle}>{post.subHeader}</Text> : null}
-              <View style={styles.metaRow}>
-                <Text style={styles.source}>{post.source || 'NendPlay News'}</Text>
-                <Text style={styles.meta}>{timeAgo(post.publishedAt)}</Text>
+
+              <View style={styles.sourcePanel}>
+                <View style={styles.newsLogo}><Text style={styles.newsLogoText}>N</Text></View>
+                <View style={styles.sourceTextWrap}>
+                  <View style={styles.sourceNameRow}>
+                    <Text style={styles.source}>{post.source || 'NendPlay News'}</Text>
+                    <Ionicons name="checkmark-circle" size={17} color={BLUE} />
+                  </View>
+                  <View style={styles.metaRow}>
+                    <Ionicons name="calendar-outline" size={15} color={MUTED} />
+                    <Text style={styles.meta}>{formatDate(post.publishedAt || post.createdAt)}</Text>
+                    <Text style={styles.metaDot}>•</Text>
+                    <Ionicons name="time-outline" size={15} color={MUTED} />
+                    <Text style={styles.meta}>{timeAgo(post.publishedAt || post.createdAt)}</Text>
+                    <Text style={styles.metaDot}>•</Text>
+                    <Ionicons name="book-outline" size={15} color={MUTED} />
+                    <Text style={styles.meta}>{readTime}</Text>
+                  </View>
+                </View>
               </View>
 
-              {videos.map((item, index) => <NewsVideo key={`video-${index}`} item={item} />)}
+              <View style={styles.heroMedia}>
+                <Text style={styles.heroPill}>{category.toUpperCase()}</Text>
+                {heroVideo ? (
+                  <NewsVideo item={heroVideo} />
+                ) : heroImage ? (
+                  <Image source={{ uri: heroImage.url }} style={styles.heroImage} resizeMode="cover" />
+                ) : (
+                  <View style={styles.heroFallback}>
+                    <Ionicons name="newspaper-outline" size={44} color={BLUE} />
+                  </View>
+                )}
+                {heroVideo ? (
+                  <View pointerEvents="none" style={styles.heroPlay}>
+                    <Ionicons name="play" size={28} color={BLUE} />
+                  </View>
+                ) : null}
+              </View>
+
+              {remainingVideos.map((item, index) => <NewsVideo key={`video-${index}`} item={item} />)}
               {audios.map((item, index) => <NewsAudio key={`audio-${index}`} item={item} />)}
-              {images.map((item, index) => (
+              {remainingImages.map((item, index) => (
                 <Image key={`image-${index}`} source={{ uri: item.url }} style={styles.image} resizeMode="cover" />
               ))}
 
               {paragraphs.map((text, index) => (
                 <React.Fragment key={`paragraph-${index}`}>
-                  <Text style={styles.paragraph}>{text}</Text>
+                  {isQuoteParagraph(text) ? (
+                    <View style={styles.quoteBlock}>
+                      <Text style={styles.quoteText}>{text}</Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.paragraph}>{text}</Text>
+                  )}
                   {post.adsEnabled && index === 0 ? (
                     <View style={styles.inlineAdStack}>
                       <AdBanner style={styles.inlineAd} horizontalPadding={48} />
@@ -270,18 +346,36 @@ export default function NewsDetailScreen({ route, navigation }) {
                 </React.Fragment>
               ))}
 
+              <TouchableOpacity
+                style={styles.listenButton}
+                onPress={() => Alert.alert('Listen', 'Audio narration for news will be available soon.')}
+              >
+                <Ionicons name="headset-outline" size={25} color="#fff" />
+                <Text style={styles.listenText}>Listen</Text>
+              </TouchableOpacity>
+
               <View style={styles.actions}>
                 <TouchableOpacity style={styles.action}>
-                  <Ionicons name="chatbubble-ellipses-outline" size={25} color={TEXT} />
-                  <Text style={styles.actionText}>{post.commentCount || comments.length}</Text>
+                  <Ionicons name="chatbubble-ellipses-outline" size={25} color={BLUE} />
+                  <View>
+                    <Text style={styles.actionCount}>{post.commentCount || comments.length}</Text>
+                    <Text style={styles.actionLabel}>Comments</Text>
+                  </View>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.action} onPress={likePost}>
-                  <Ionicons name="heart-outline" size={27} color={TEXT} />
-                  <Text style={styles.actionText}>{post.likeCount || 0}</Text>
+                  <Ionicons name="heart-outline" size={28} color={BLUE} />
+                  <View>
+                    <Text style={styles.actionCount}>{post.likeCount || 0}</Text>
+                    <Text style={styles.actionLabel}>Likes</Text>
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.action} onPress={() => Alert.alert('Saved', 'This news has been saved for later.')}>
+                  <Ionicons name="bookmark-outline" size={26} color="#111827" />
+                  <Text style={styles.actionLabelOnly}>Save</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.action} onPress={sharePost}>
-                  <Ionicons name="share-social-outline" size={27} color={TEXT} />
-                  <Text style={styles.actionText}>{post.shareCount || 0}</Text>
+                  <Ionicons name="share-social-outline" size={27} color={BLUE} />
+                  <Text style={styles.actionLabelOnly}>Share</Text>
                 </TouchableOpacity>
               </View>
 
@@ -327,26 +421,103 @@ export default function NewsDetailScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: '#F6F7FB' },
+  loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F6F7FB' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 18,
-    paddingBottom: 12,
+    marginHorizontal: 12,
+    paddingHorizontal: 10,
+    paddingBottom: 14,
+    backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: BORDER,
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
   },
   headerButton: { width: 42, height: 42, alignItems: 'center', justifyContent: 'center' },
-  headerBrand: { color: TEXT, fontSize: 22, fontWeight: '900' },
-  article: { padding: 20 },
-  title: { color: TEXT, fontSize: 32, lineHeight: 40, fontWeight: '900' },
-  subTitle: { color: '#3E4651', fontSize: 18, lineHeight: 26, marginTop: 12, fontWeight: '600' },
-  metaRow: { flexDirection: 'row', gap: 16, marginTop: 20, marginBottom: 22 },
-  source: { color: MUTED, fontSize: 15, fontWeight: '700' },
-  meta: { color: MUTED, fontSize: 15 },
-  video: { width: '100%', height: 230, backgroundColor: '#000', marginBottom: 18 },
+  headerActions: { flexDirection: 'row', alignItems: 'center' },
+  headerBrand: { color: '#090D1C', fontSize: 22, fontWeight: '900' },
+  headerBrandAccent: { color: BLUE },
+  article: {
+    marginHorizontal: 12,
+    backgroundColor: '#fff',
+    padding: 18,
+    borderBottomLeftRadius: 26,
+    borderBottomRightRadius: 26,
+  },
+  categoryPill: {
+    alignSelf: 'flex-start',
+    overflow: 'hidden',
+    color: '#fff',
+    backgroundColor: BLUE,
+    borderRadius: 9,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    fontSize: 13,
+    fontWeight: '900',
+    marginBottom: 14,
+  },
+  title: { color: '#090D1C', fontSize: 32, lineHeight: 38, fontWeight: '900' },
+  subTitle: { color: '#5B6472', fontSize: 18, lineHeight: 25, marginTop: 10, fontWeight: '600' },
+  sourcePanel: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 24, marginBottom: 20 },
+  newsLogo: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: BLUE,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  newsLogoText: { color: '#fff', fontSize: 28, fontWeight: '900' },
+  sourceTextWrap: { flex: 1, minWidth: 0 },
+  sourceNameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  metaRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 6 },
+  metaDot: { color: MUTED, fontSize: 13, fontWeight: '900' },
+  source: { color: '#090D1C', fontSize: 17, fontWeight: '900' },
+  meta: { color: MUTED, fontSize: 13, fontWeight: '700' },
+  heroMedia: {
+    position: 'relative',
+    overflow: 'hidden',
+    borderRadius: 18,
+    backgroundColor: '#E9ECF3',
+    marginBottom: 22,
+  },
+  heroPill: {
+    position: 'absolute',
+    zIndex: 4,
+    left: 14,
+    top: 14,
+    overflow: 'hidden',
+    color: '#fff',
+    backgroundColor: BLUE,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  heroImage: { width: '100%', height: 290, backgroundColor: BORDER },
+  heroFallback: { width: '100%', height: 260, alignItems: 'center', justifyContent: 'center' },
+  heroPlay: {
+    position: 'absolute',
+    left: '50%',
+    top: '50%',
+    width: 70,
+    height: 70,
+    marginLeft: -35,
+    marginTop: -35,
+    borderRadius: 35,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 18,
+    elevation: 8,
+  },
+  video: { width: '100%', height: 290, backgroundColor: '#000' },
   audioCard: {
     borderWidth: 1,
     borderColor: BORDER,
@@ -358,21 +529,48 @@ const styles = StyleSheet.create({
   audioHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
   audioTitle: { color: MUTED, fontSize: 14, fontWeight: '800' },
   audio: { width: '100%', height: 56, backgroundColor: '#101022', borderRadius: 12 },
-  image: { width: '100%', height: 260, backgroundColor: BORDER, marginBottom: 18 },
-  paragraph: { color: TEXT, fontSize: 24, lineHeight: 36, marginBottom: 22 },
+  image: { width: '100%', height: 240, backgroundColor: BORDER, marginBottom: 18, borderRadius: 16 },
+  paragraph: { color: '#111827', fontSize: 17, lineHeight: 27, marginBottom: 20 },
+  quoteBlock: { borderLeftWidth: 3, borderLeftColor: BLUE, paddingLeft: 14, marginBottom: 20 },
+  quoteText: { color: '#111827', fontSize: 17, lineHeight: 28, fontStyle: 'italic' },
   inlineAdStack: { marginBottom: 26 },
   inlineAd: { marginHorizontal: 0 },
+  listenButton: {
+    alignSelf: 'flex-end',
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: BLUE,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: -4,
+    marginBottom: 18,
+    shadowColor: BLUE,
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  listenText: { color: '#fff', fontSize: 13, fontWeight: '900', marginTop: 3 },
   actions: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: BORDER,
-    paddingVertical: 16,
-    marginTop: 10,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#F0F1F5',
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 13,
+    marginTop: 4,
+    shadowColor: '#111827',
+    shadowOpacity: 0.06,
+    shadowRadius: 18,
+    elevation: 2,
   },
-  action: { alignItems: 'center', gap: 4 },
-  actionText: { color: TEXT, fontSize: 13 },
+  action: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  actionCount: { color: '#111827', fontSize: 15, fontWeight: '900' },
+  actionLabel: { color: MUTED, fontSize: 10, fontWeight: '700' },
+  actionLabelOnly: { color: '#111827', fontSize: 13, fontWeight: '800' },
   commentsTitle: { color: TEXT, fontSize: 24, fontWeight: '900', marginTop: 30 },
   commentBlock: { paddingVertical: 4 },
   commentRow: { flexDirection: 'row', gap: 13, paddingHorizontal: 20, paddingVertical: 15 },
