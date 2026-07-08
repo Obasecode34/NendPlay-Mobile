@@ -49,6 +49,29 @@ function getCategory(post) {
   return String(value).replace(/[-_]/g, ' ')
 }
 
+function getJobRequirements(post = {}) {
+  const lines = String(post.body || '')
+    .split(/\n+/)
+    .map((line) => line.replace(/^[-*•]\s*/, '').trim())
+    .filter(Boolean)
+  if (lines.length) return lines
+  return [post.subHeader || 'Relevant experience and strong communication skills required.']
+}
+
+function getJobMeta(post = {}) {
+  return {
+    company: post.company || post.source || 'NendPlay Media',
+    tagline: post.tagline || 'Empowering Jobs. Inspiring Futures.',
+    title: post.header || post.title || 'Job Position / Title',
+    location: post.location || post.jobLocation || 'Lagos, Nigeria',
+    salary: post.salary || post.salaryRange || 'Salary disclosed during application',
+    experience: post.experience || post.yearsExperience || post.subHeader || '2 - 4 years',
+    deadline: formatDate(post.deadline || post.applicationDeadline || post.publishedAt || post.createdAt),
+    appliedCount: post.appliedCount || post.applicationCount || 120,
+    requirements: getJobRequirements(post),
+  }
+}
+
 function isQuoteParagraph(text) {
   const trimmed = String(text || '').trim()
   return trimmed.startsWith('"') || trimmed.startsWith('“') || trimmed.startsWith("'") || trimmed.startsWith('‘')
@@ -255,6 +278,157 @@ export default function NewsDetailScreen({ route, navigation }) {
   const remainingVideos = videos.slice(1)
   const remainingImages = images.slice(heroImage ? 1 : 0)
   const readTime = estimateReadTime(post.body)
+
+  if (post.section === 'career') {
+    const job = getJobMeta(post)
+    return (
+      <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <FlatList
+          data={comments}
+          keyExtractor={(item, index) => `${item._id || index}`}
+          ListHeaderComponent={(
+            <View>
+              <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
+                  <Ionicons name="chevron-back" size={27} color="#090D1C" />
+                </TouchableOpacity>
+                <Text style={styles.headerBrand}><Text style={styles.headerBrandAccent}>NendPlay</Text> Career</Text>
+                <View style={styles.headerActions}>
+                  <TouchableOpacity onPress={() => Alert.alert('Saved', 'This job has been saved for later.')} style={styles.headerButton}>
+                    <Ionicons name="bookmark-outline" size={24} color="#090D1C" />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={sharePost} style={styles.headerButton}>
+                    <Ionicons name="share-social-outline" size={22} color="#090D1C" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={styles.jobDetailCard}>
+                <View style={styles.jobDetailTop}>
+                  <View style={styles.jobDetailBrand}>
+                    <View style={styles.jobDetailLogo}>
+                      <Text style={styles.jobDetailLogoN}>N</Text>
+                      <Text style={styles.jobDetailLogoText}>NendPlay</Text>
+                    </View>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <View style={styles.jobDetailCompanyRow}>
+                        <Text style={styles.jobDetailCompany} numberOfLines={1}>{job.company}</Text>
+                        <Ionicons name="checkmark-circle" size={20} color={BLUE} />
+                      </View>
+                      <Text style={styles.jobDetailTagline} numberOfLines={2}>{job.tagline}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.jobDetailNew}>
+                    <Text style={styles.jobDetailNewText}>New</Text>
+                  </View>
+                </View>
+
+                <Text style={styles.jobDetailTitle}>{job.title}</Text>
+                <View style={styles.jobDetailDivider} />
+
+                <View style={styles.jobDetailInfoRow}>
+                  <View style={styles.jobDetailIcon}>
+                    <Ionicons name="location" size={27} color={BLUE} />
+                  </View>
+                  <Text style={styles.jobDetailLabel}>Location</Text>
+                  <Text style={styles.jobDetailValue} numberOfLines={2}>{job.location}</Text>
+                </View>
+                <View style={styles.jobDetailInfoRow}>
+                  <View style={styles.jobDetailIcon}>
+                    <Ionicons name="cash" size={27} color={BLUE} />
+                  </View>
+                  <Text style={styles.jobDetailLabel}>Salary</Text>
+                  <Text style={styles.jobDetailSalary} numberOfLines={2}>{job.salary}</Text>
+                </View>
+
+                <View style={styles.jobDetailMetaBand}>
+                  <View style={styles.jobDetailMetaItem}>
+                    <Ionicons name="time" size={22} color={BLUE} />
+                    <Text style={styles.jobDetailMetaText}>{job.experience}</Text>
+                  </View>
+                  <Text style={styles.jobDetailSlash}>//</Text>
+                  <View style={styles.jobDetailMetaItem}>
+                    <Ionicons name="calendar" size={22} color={BLUE} />
+                    <Text style={styles.jobDetailMetaText}>{job.deadline}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.jobDetailRequirements}>
+                  <View style={styles.jobDetailReqHeader}>
+                    <View style={styles.jobDetailIcon}>
+                      <Ionicons name="clipboard" size={24} color={BLUE} />
+                    </View>
+                    <Text style={styles.jobDetailReqTitle}>Requirements</Text>
+                  </View>
+                  {job.requirements.map((requirement, index) => (
+                    <View key={`${requirement}-${index}`} style={styles.jobDetailBulletRow}>
+                      <View style={styles.jobDetailBullet} />
+                      <Text style={styles.jobDetailBulletText}>{requirement}</Text>
+                    </View>
+                  ))}
+                </View>
+
+                <View style={styles.jobDetailCallout}>
+                  <View style={styles.jobDetailStar}>
+                    <Ionicons name="star" size={26} color="#FFFFFF" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.jobDetailCalloutTitle}>Be part of a growing team making impact every day.</Text>
+                    <Text style={styles.jobDetailCalloutText}>Apply now and take the next step in your career.</Text>
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.jobDetailFooter}>
+                <View style={styles.jobDetailApplied}>
+                  <Ionicons name="people" size={24} color={BLUE} />
+                  <Text style={styles.jobDetailAppliedText}>{job.appliedCount}+ people applied</Text>
+                </View>
+                <TouchableOpacity style={styles.jobDetailApply} onPress={sharePost}>
+                  <Ionicons name="send" size={22} color="#fff" />
+                  <Text style={styles.jobDetailApplyText}>Apply Now</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.commentsTitle}>All comments</Text>
+            </View>
+          )}
+          renderItem={({ item }) => (
+            <CommentItem
+              item={item}
+              onReply={(target) => setReplyTarget(target)}
+              onLike={likeComment}
+            />
+          )}
+          ListEmptyComponent={<Text style={styles.emptyComments}>No comments yet. Start the conversation.</Text>}
+          contentContainerStyle={{ paddingBottom: 110 }}
+        />
+
+        <View style={[styles.commentBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+          {replyTarget && (
+            <View style={styles.replyBanner}>
+              <Text style={styles.replyBannerText} numberOfLines={1}>
+                Replying to {replyTarget.user?.profileName || replyTarget.user?.username || 'comment'}
+              </Text>
+              <TouchableOpacity onPress={() => setReplyTarget(null)}>
+                <Ionicons name="close" size={18} color={MUTED} />
+              </TouchableOpacity>
+            </View>
+          )}
+          <TextInput
+            value={comment}
+            onChangeText={setComment}
+            placeholder={replyTarget ? 'Write a reply' : "Let's talk about it"}
+            placeholderTextColor={MUTED}
+            style={styles.commentInput}
+          />
+          <TouchableOpacity disabled={submitting} onPress={submitComment} style={styles.sendButton}>
+            <Ionicons name="send" size={21} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    )
+  }
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -572,6 +746,118 @@ const styles = StyleSheet.create({
   actionLabel: { color: MUTED, fontSize: 10, fontWeight: '700' },
   actionLabelOnly: { color: '#111827', fontSize: 13, fontWeight: '800' },
   commentsTitle: { color: TEXT, fontSize: 24, fontWeight: '900', marginTop: 30 },
+  jobDetailCard: {
+    marginHorizontal: 12,
+    backgroundColor: '#FFFFFF',
+    padding: 18,
+    borderBottomLeftRadius: 26,
+    borderBottomRightRadius: 26,
+    shadowColor: '#4C1D95',
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 4,
+  },
+  jobDetailTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 },
+  jobDetailBrand: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 13, minWidth: 0 },
+  jobDetailLogo: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 1,
+    borderColor: '#DDD6FE',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+  },
+  jobDetailLogoN: { color: BLUE, fontSize: 34, fontWeight: '900', lineHeight: 34 },
+  jobDetailLogoText: { color: BLUE, fontSize: 11, fontWeight: '900', marginTop: -1 },
+  jobDetailCompanyRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  jobDetailCompany: { flexShrink: 1, color: '#090D1C', fontSize: 20, fontWeight: '900' },
+  jobDetailTagline: { color: '#30384A', fontSize: 14, lineHeight: 19, marginTop: 4 },
+  jobDetailNew: { backgroundColor: BLUE, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 8 },
+  jobDetailNewText: { color: '#fff', fontSize: 15, fontWeight: '900' },
+  jobDetailTitle: { color: '#090D1C', fontSize: 34, lineHeight: 40, fontWeight: '900', marginTop: 34 },
+  jobDetailDivider: { height: 1, backgroundColor: '#E5E7EB', marginVertical: 18 },
+  jobDetailInfoRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 18 },
+  jobDetailIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: '#F3E8FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  jobDetailLabel: { width: 82, color: '#090D1C', fontSize: 17, fontWeight: '900' },
+  jobDetailValue: { flex: 1, color: '#111827', fontSize: 17, lineHeight: 23 },
+  jobDetailSalary: { flex: 1, color: BLUE, fontSize: 17, lineHeight: 23, fontWeight: '900' },
+  jobDetailMetaBand: {
+    borderWidth: 1,
+    borderColor: '#DDD6FE',
+    backgroundColor: '#F7F2FF',
+    borderRadius: 15,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  jobDetailMetaItem: { flexDirection: 'row', alignItems: 'center', gap: 7, flexShrink: 1 },
+  jobDetailMetaText: { color: '#111827', fontSize: 15, fontWeight: '800' },
+  jobDetailSlash: { color: BLUE, fontSize: 22, fontWeight: '900' },
+  jobDetailRequirements: { borderTopWidth: 1, borderTopColor: '#F0F1F5', marginTop: 22, paddingTop: 20 },
+  jobDetailReqHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
+  jobDetailReqTitle: { color: BLUE, fontSize: 20, fontWeight: '900' },
+  jobDetailBulletRow: { flexDirection: 'row', gap: 12, marginBottom: 13 },
+  jobDetailBullet: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: BLUE, marginTop: 9 },
+  jobDetailBulletText: { flex: 1, color: '#111827', fontSize: 16, lineHeight: 25 },
+  jobDetailCallout: {
+    marginTop: 16,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: BLUE,
+    backgroundColor: '#FBF7FF',
+    borderRadius: 16,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  jobDetailStar: { width: 50, height: 50, borderRadius: 25, backgroundColor: BLUE, alignItems: 'center', justifyContent: 'center' },
+  jobDetailCalloutTitle: { color: '#090D1C', fontSize: 15, fontWeight: '900', lineHeight: 21 },
+  jobDetailCalloutText: { color: '#374151', fontSize: 14, marginTop: 4, lineHeight: 20 },
+  jobDetailFooter: {
+    marginHorizontal: 12,
+    backgroundColor: '#F7F2FF',
+    padding: 14,
+    flexDirection: 'row',
+    gap: 12,
+  },
+  jobDetailApplied: {
+    flex: 1,
+    minHeight: 58,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#DDD6FE',
+    backgroundColor: '#fff',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    paddingHorizontal: 10,
+  },
+  jobDetailAppliedText: { color: BLUE, fontSize: 13, fontWeight: '800' },
+  jobDetailApply: {
+    flex: 1,
+    minHeight: 58,
+    borderRadius: 16,
+    backgroundColor: BLUE,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 10,
+  },
+  jobDetailApplyText: { color: '#fff', fontSize: 17, fontWeight: '900' },
   commentBlock: { paddingVertical: 4 },
   commentRow: { flexDirection: 'row', gap: 13, paddingHorizontal: 20, paddingVertical: 15 },
   commentAvatar: { width: 46, height: 46, borderRadius: 23, backgroundColor: BORDER },

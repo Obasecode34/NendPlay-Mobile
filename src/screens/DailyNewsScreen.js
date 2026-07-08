@@ -92,6 +92,29 @@ function storyCategory(item = {}) {
   return String(value || item.section || 'News').replace(/-/g, ' ')
 }
 
+function getJobRequirements(item = {}) {
+  const lines = String(item.body || '')
+    .split(/\n+/)
+    .map((line) => line.replace(/^[-*•]\s*/, '').trim())
+    .filter(Boolean)
+  if (lines.length) return lines.slice(0, 4)
+  return [item.subHeader || item.summary || 'Relevant experience and strong communication skills required.']
+}
+
+function getJobMeta(item = {}) {
+  return {
+    company: item.company || item.source || 'NendPlay Media',
+    tagline: item.tagline || 'Empowering Jobs. Inspiring Futures.',
+    title: item.header || item.title || 'Job Position / Title',
+    location: item.location || item.jobLocation || 'Lagos, Nigeria',
+    salary: item.salary || item.salaryRange || 'Salary disclosed during application',
+    experience: item.experience || item.yearsExperience || item.subHeader || '2 - 4 years',
+    deadline: formatDate(item.deadline || item.applicationDeadline || item.publishedAt || item.createdAt),
+    appliedCount: item.appliedCount || item.applicationCount || 120,
+    requirements: getJobRequirements(item),
+  }
+}
+
 function SourceRow({ item }) {
   return (
     <View style={styles.sourceRow}>
@@ -162,6 +185,93 @@ function HeroStory({ item, onPress }) {
 
 function CompactStory({ item, onPress }) {
   return <HeroStory item={item} onPress={onPress} />
+}
+
+function JobStory({ item, onPress }) {
+  const job = getJobMeta(item)
+  return (
+    <TouchableOpacity activeOpacity={0.9} onPress={() => onPress(item)} style={styles.jobCard}>
+      <View style={styles.jobHeader}>
+        <View style={styles.jobBrandRow}>
+          <View style={styles.jobLogo}>
+            <Text style={styles.jobLogoN}>N</Text>
+            <Text style={styles.jobLogoText}>NendPlay</Text>
+          </View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <View style={styles.jobCompanyRow}>
+              <Text style={styles.jobCompany} numberOfLines={1}>{job.company}</Text>
+              <Ionicons name="checkmark-circle" size={18} color={BLUE} />
+            </View>
+            <Text style={styles.jobTagline} numberOfLines={1}>{job.tagline}</Text>
+          </View>
+        </View>
+        <View style={styles.jobNewPill}>
+          <Text style={styles.jobNewText}>New</Text>
+        </View>
+      </View>
+
+      <Text style={styles.jobTitle} numberOfLines={2}>{job.title}</Text>
+
+      <View style={styles.jobDivider} />
+      <View style={styles.jobInfoRow}>
+        <View style={styles.jobIconBox}>
+          <Ionicons name="location" size={24} color={BLUE} />
+        </View>
+        <Text style={styles.jobInfoLabel}>Location</Text>
+        <Text style={styles.jobInfoValue} numberOfLines={1}>{job.location}</Text>
+      </View>
+      <View style={styles.jobInfoRow}>
+        <View style={styles.jobIconBox}>
+          <Ionicons name="cash" size={24} color={BLUE} />
+        </View>
+        <Text style={styles.jobInfoLabel}>Salary</Text>
+        <Text style={styles.jobSalary} numberOfLines={1}>{job.salary}</Text>
+      </View>
+
+      <View style={styles.jobMetaBand}>
+        <View style={styles.jobMetaItem}>
+          <Ionicons name="time" size={19} color={BLUE} />
+          <Text style={styles.jobMetaText}>{job.experience}</Text>
+        </View>
+        <Text style={styles.jobSlash}>//</Text>
+        <View style={styles.jobMetaItem}>
+          <Ionicons name="calendar" size={19} color={BLUE} />
+          <Text style={styles.jobMetaText}>{job.deadline}</Text>
+        </View>
+      </View>
+
+      <View style={styles.jobRequirementBlock}>
+        <Text style={styles.jobRequirementTitle}>Requirements</Text>
+        {job.requirements.slice(0, 3).map((requirement, index) => (
+          <View key={`${requirement}-${index}`} style={styles.jobBulletRow}>
+            <View style={styles.jobBullet} />
+            <Text style={styles.jobBulletText} numberOfLines={1}>{requirement}</Text>
+          </View>
+        ))}
+      </View>
+
+      <View style={styles.jobCallout}>
+        <View style={styles.jobStar}>
+          <Ionicons name="star" size={24} color="#fff" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.jobCalloutTitle}>Be part of a growing team making impact every day.</Text>
+          <Text style={styles.jobCalloutText}>Apply now and take the next step in your career.</Text>
+        </View>
+      </View>
+
+      <View style={styles.jobFooter}>
+        <View style={styles.jobApplied}>
+          <Ionicons name="people" size={20} color={BLUE} />
+          <Text style={styles.jobAppliedText}>{job.appliedCount}+ people applied</Text>
+        </View>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => onPress(item)} style={styles.jobApplyButton}>
+          <Ionicons name="send" size={18} color="#fff" />
+          <Text style={styles.jobApplyText}>Apply Now</Text>
+        </TouchableOpacity>
+      </View>
+    </TouchableOpacity>
+  )
 }
 
 function RelatedRail({ items, onPress }) {
@@ -440,9 +550,17 @@ export default function DailyNewsScreen({ navigation }) {
         </View>
       )}
 
-      {topStory ? <HeroStory item={topStory} onPress={openArticle} /> : null}
-      {secondStory ? <CompactStory item={secondStory} onPress={openArticle} /> : null}
-      <RelatedRail items={relatedStories} onPress={openArticle} />
+      {topStory ? (
+        activeSection === 'career'
+          ? <JobStory item={topStory} onPress={openArticle} />
+          : <HeroStory item={topStory} onPress={openArticle} />
+      ) : null}
+      {secondStory ? (
+        activeSection === 'career'
+          ? <JobStory item={secondStory} onPress={openArticle} />
+          : <CompactStory item={secondStory} onPress={openArticle} />
+      ) : null}
+      {activeSection === 'career' ? null : <RelatedRail items={relatedStories} onPress={openArticle} />}
       {(topStory || secondStory || relatedStories.length) ? <NewsFeedAd /> : null}
       {activeTab === 'for-you' && remainingStories.length > 0 ? (
         <View style={styles.picksHeader}>
@@ -459,9 +577,11 @@ export default function DailyNewsScreen({ navigation }) {
         keyExtractor={(item, index) => `${item.id}-${index}`}
         renderItem={({ item, index }) => (
           <>
-            {index % 3 === 0
-              ? <HeroStory item={item} onPress={openArticle} />
-              : <CompactStory item={item} onPress={openArticle} />}
+            {activeSection === 'career'
+              ? <JobStory item={item} onPress={openArticle} />
+              : index % 3 === 0
+                ? <HeroStory item={item} onPress={openArticle} />
+                : <CompactStory item={item} onPress={openArticle} />}
             {(index + 1) % 4 === 0 ? <NewsFeedAd /> : null}
           </>
         )}
@@ -650,6 +770,113 @@ const styles = StyleSheet.create({
   readMoreRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   readMoreText: { color: '#1354C8', fontSize: 14, fontWeight: '900' },
   bookmarkButton: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
+  jobCard: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 10,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    shadowColor: '#4C1D95',
+    shadowOpacity: 0.16,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 6,
+  },
+  jobHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 },
+  jobBrandRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, minWidth: 0 },
+  jobLogo: {
+    width: 62,
+    height: 62,
+    borderRadius: 31,
+    borderWidth: 1,
+    borderColor: '#DDD6FE',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  jobLogoN: { color: BLUE, fontSize: 28, fontWeight: '900', lineHeight: 28 },
+  jobLogoText: { color: BLUE, fontSize: 10, fontWeight: '900', marginTop: -1 },
+  jobCompanyRow: { flexDirection: 'row', alignItems: 'center', gap: 5, minWidth: 0 },
+  jobCompany: { flexShrink: 1, color: '#090D1C', fontSize: 18, fontWeight: '900' },
+  jobTagline: { color: '#4B5563', fontSize: 12, fontWeight: '700', marginTop: 2 },
+  jobNewPill: { borderRadius: 12, backgroundColor: BLUE, paddingHorizontal: 14, paddingVertical: 8 },
+  jobNewText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
+  jobTitle: { color: '#090D1C', fontSize: 30, lineHeight: 36, fontWeight: '900', marginTop: 24 },
+  jobDivider: { height: 1, backgroundColor: '#E5E7EB', marginVertical: 16 },
+  jobInfoRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
+  jobIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: '#F3E8FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  jobInfoLabel: { width: 74, color: '#090D1C', fontSize: 16, fontWeight: '900' },
+  jobInfoValue: { flex: 1, color: '#111827', fontSize: 16, fontWeight: '700' },
+  jobSalary: { flex: 1, color: BLUE, fontSize: 16, fontWeight: '900' },
+  jobMetaBand: {
+    marginTop: 2,
+    borderWidth: 1,
+    borderColor: '#DDD6FE',
+    backgroundColor: '#F7F2FF',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  jobMetaItem: { flexDirection: 'row', alignItems: 'center', gap: 7, flexShrink: 1 },
+  jobMetaText: { color: '#111827', fontSize: 14, fontWeight: '800' },
+  jobSlash: { color: BLUE, fontSize: 20, fontWeight: '900' },
+  jobRequirementBlock: { borderTopWidth: 1, borderTopColor: '#F0F1F5', marginTop: 18, paddingTop: 16 },
+  jobRequirementTitle: { color: BLUE, fontSize: 18, fontWeight: '900', marginBottom: 10 },
+  jobBulletRow: { flexDirection: 'row', gap: 10, alignItems: 'center', marginBottom: 8 },
+  jobBullet: { width: 6, height: 6, borderRadius: 3, backgroundColor: BLUE },
+  jobBulletText: { flex: 1, color: '#111827', fontSize: 14, lineHeight: 20 },
+  jobCallout: {
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: BLUE,
+    borderStyle: 'dashed',
+    borderRadius: 16,
+    padding: 13,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#FBF7FF',
+  },
+  jobStar: { width: 46, height: 46, borderRadius: 23, backgroundColor: BLUE, alignItems: 'center', justifyContent: 'center' },
+  jobCalloutTitle: { color: '#090D1C', fontSize: 14, fontWeight: '900' },
+  jobCalloutText: { color: '#374151', fontSize: 13, marginTop: 3 },
+  jobFooter: { marginTop: 16, flexDirection: 'row', gap: 10 },
+  jobApplied: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#DDD6FE',
+    borderRadius: 15,
+    paddingVertical: 13,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  jobAppliedText: { color: BLUE, fontSize: 13, fontWeight: '800' },
+  jobApplyButton: {
+    flex: 1,
+    borderRadius: 15,
+    paddingVertical: 13,
+    paddingHorizontal: 10,
+    backgroundColor: BLUE,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+  },
+  jobApplyText: { color: '#FFFFFF', fontSize: 15, fontWeight: '900' },
   feedAdWrap: { marginHorizontal: 16, marginTop: 10, marginBottom: 8 },
   feedAdBanner: { marginBottom: 8 },
   feedNativeAd: { marginHorizontal: 0 },
