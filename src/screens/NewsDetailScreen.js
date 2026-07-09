@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import {
   ActivityIndicator, Alert, FlatList, Image, KeyboardAvoidingView,
-  Platform, Share, StyleSheet, Text, TextInput, TouchableOpacity, View,
+  Linking, Platform, Share, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { VideoView, useVideoPlayer } from 'expo-video'
@@ -49,7 +49,7 @@ function getCategory(post) {
   return String(value).replace(/[-_]/g, ' ')
 }
 
-function getJobRequirements(post = {}) {
+function getLegacyJobRequirements(post = {}) {
   const lines = String(post.body || '')
     .split(/\n+/)
     .map((line) => line.replace(/^[-*•]\s*/, '').trim())
@@ -58,7 +58,7 @@ function getJobRequirements(post = {}) {
   return [post.subHeader || 'Relevant experience and strong communication skills required.']
 }
 
-function getJobMeta(post = {}) {
+function getLegacyJobMeta(post = {}) {
   return {
     company: post.company || post.source || 'NendPlay Media',
     tagline: post.tagline || 'Empowering Jobs. Inspiring Futures.',
@@ -68,7 +68,60 @@ function getJobMeta(post = {}) {
     experience: post.experience || post.yearsExperience || post.subHeader || '2 - 4 years',
     deadline: formatDate(post.deadline || post.applicationDeadline || post.publishedAt || post.createdAt),
     appliedCount: post.appliedCount || post.applicationCount || 120,
+    requirements: getLegacyJobRequirements(post),
+  }
+}
+
+function getJobLines(post = {}) {
+  return String(post.body || '')
+    .split(/\n+/)
+    .map((line) => line.replace(/^[-*•]\s*/, '').trim())
+    .filter(Boolean)
+}
+
+function getJobRequirements(post = {}) {
+  const lines = getJobLines(post)
+  if (Array.isArray(post.requirements) && post.requirements.length) return post.requirements
+  if (lines.length > 1) return lines.slice(1, 6)
+  if (lines.length) return lines
+  return [post.subHeader || 'Relevant experience and strong communication skills required.']
+}
+
+function getJobResponsibilities(post = {}) {
+  const lines = getJobLines(post)
+  if (Array.isArray(post.responsibilities) && post.responsibilities.length) return post.responsibilities
+  if (lines.length > 2) return lines.slice(0, 5)
+  return [
+    'Build and maintain high-quality products using modern tools and best practices.',
+    'Collaborate with designers, product teams, and stakeholders to deliver strong results.',
+    'Communicate clearly, document work, and improve workflows across the team.',
+  ]
+}
+
+function getJobMeta(post = {}) {
+  const lines = getJobLines(post)
+  const category = getCategory(post)
+  return {
+    company: post.company || post.source || 'NendPlay Media',
+    tagline: post.tagline || 'Empowering Jobs. Inspiring Futures.',
+    title: post.header || post.title || 'Job Position / Title',
+    location: post.location || post.jobLocation || 'Lagos, Nigeria',
+    salary: post.salary || post.salaryRange || 'Salary disclosed during application',
+    experience: post.experience || post.yearsExperience || post.subHeader || '2 - 4 years',
+    deadline: formatDate(post.deadline || post.applicationDeadline || post.publishedAt || post.createdAt),
+    posted: timeAgo(post.publishedAt || post.createdAt),
+    jobType: post.jobType || 'Full-time',
+    workMode: post.jobMode ? String(post.jobMode).replace(/[-_]/g, ' ') : 'Remote',
+    level: post.level || 'Mid-Level',
+    urgency: post.urgency || 'Urgent',
+    category,
+    summary: post.summary || post.jobSummary || post.subHeader || lines[0] || 'We are looking for a skilled and passionate professional to join our dynamic team.',
+    responsibilities: getJobResponsibilities(post),
+    appliedCount: post.appliedCount || post.applicationCount || 120,
+    applyEmail: post.applyEmail || post.contactEmail || 'careers@nendplaymedia.com',
+    applyUrl: post.applyUrl || post.applicationUrl || 'https://nendplay.com/careers',
     requirements: getJobRequirements(post),
+    benefits: ['Health Insurance', 'Remote Work', 'Paid Leave', 'Career Growth', 'Pension Plan'],
   }
 }
 
@@ -281,6 +334,17 @@ export default function NewsDetailScreen({ route, navigation }) {
 
   if (post.section === 'career') {
     const job = getJobMeta(post)
+    const openApply = () => {
+      if (job.applyUrl) Linking.openURL(job.applyUrl).catch(() => sharePost())
+      else Linking.openURL(`mailto:${job.applyEmail}?subject=Application for ${job.title}`).catch(() => sharePost())
+    }
+    const jobChips = [
+      { label: job.jobType, icon: 'briefcase-outline' },
+      { label: job.workMode, icon: 'globe-outline' },
+      { label: job.level, icon: 'bar-chart-outline' },
+      { label: job.urgency, icon: 'flame-outline', urgent: true },
+      { label: job.category, icon: 'pricetag-outline' },
+    ]
     return (
       <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <FlatList
@@ -318,39 +382,71 @@ export default function NewsDetailScreen({ route, navigation }) {
                       <Text style={styles.jobDetailTagline} numberOfLines={2}>{job.tagline}</Text>
                     </View>
                   </View>
-                  <View style={styles.jobDetailNew}>
-                    <Text style={styles.jobDetailNewText}>New</Text>
-                  </View>
                 </View>
 
                 <Text style={styles.jobDetailTitle}>{job.title}</Text>
+                <View style={styles.jobDetailCompanyMeta}>
+                  <Ionicons name="location" size={16} color={BLUE} />
+                  <Text style={styles.jobDetailCompanyMetaText}>{job.location}</Text>
+                  <Text style={styles.jobDetailCompanyMetaDot}>|</Text>
+                  <Ionicons name="cash-outline" size={16} color={BLUE} />
+                  <Text style={styles.jobDetailCompanyMetaSalary}>{job.salary}</Text>
+                </View>
+                <View style={styles.jobDetailCompanyMeta}>
+                  <Ionicons name="time-outline" size={16} color={BLUE} />
+                  <Text style={styles.jobDetailCompanyMetaText}>{job.experience}</Text>
+                  <Text style={styles.jobDetailCompanyMetaDot}>//</Text>
+                  <Ionicons name="calendar-outline" size={16} color={BLUE} />
+                  <Text style={styles.jobDetailCompanyMetaText}>{job.deadline}</Text>
+                  <Text style={styles.jobDetailCompanyMetaDot}>•</Text>
+                  <Text style={styles.jobDetailCompanyMetaText}>{job.posted}</Text>
+                </View>
+
+                <View style={styles.jobDetailChipRow}>
+                  {jobChips.map((chip) => (
+                    <View key={chip.label} style={[styles.jobDetailChip, chip.urgent && styles.jobDetailUrgentChip]}>
+                      <Ionicons name={chip.icon} size={16} color={chip.urgent ? '#DC2626' : BLUE} />
+                      <Text style={[styles.jobDetailChipText, chip.urgent && styles.jobDetailUrgentChipText]}>{chip.label}</Text>
+                    </View>
+                  ))}
+                </View>
+
                 <View style={styles.jobDetailDivider} />
 
-                <View style={styles.jobDetailInfoRow}>
-                  <View style={styles.jobDetailIcon}>
-                    <Ionicons name="location" size={27} color={BLUE} />
+                <View style={styles.jobDetailSection}>
+                  <View style={styles.jobDetailReqHeader}>
+                    <View style={styles.jobDetailIcon}>
+                      <Ionicons name="document-text-outline" size={22} color={BLUE} />
+                    </View>
+                    <Text style={styles.jobDetailSectionTitle}>Job Summary</Text>
                   </View>
-                  <Text style={styles.jobDetailLabel}>Location</Text>
-                  <Text style={styles.jobDetailValue} numberOfLines={2}>{job.location}</Text>
-                </View>
-                <View style={styles.jobDetailInfoRow}>
-                  <View style={styles.jobDetailIcon}>
-                    <Ionicons name="cash" size={27} color={BLUE} />
-                  </View>
-                  <Text style={styles.jobDetailLabel}>Salary</Text>
-                  <Text style={styles.jobDetailSalary} numberOfLines={2}>{job.salary}</Text>
+                  <Text style={styles.jobDetailParagraph}>{job.summary}</Text>
                 </View>
 
-                <View style={styles.jobDetailMetaBand}>
-                  <View style={styles.jobDetailMetaItem}>
-                    <Ionicons name="time" size={22} color={BLUE} />
-                    <Text style={styles.jobDetailMetaText}>{job.experience}</Text>
+                <View style={styles.jobDetailSponsor}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.jobDetailSponsorSmall}>Sponsored</Text>
+                    <Text style={styles.jobDetailSponsorTitle}>Grow your brand with NendPlay Ads</Text>
+                    <Text style={styles.jobDetailSponsorText}>Reach professionals and talent on NendPlay.</Text>
                   </View>
-                  <Text style={styles.jobDetailSlash}>//</Text>
-                  <View style={styles.jobDetailMetaItem}>
-                    <Ionicons name="calendar" size={22} color={BLUE} />
-                    <Text style={styles.jobDetailMetaText}>{job.deadline}</Text>
+                  <TouchableOpacity style={styles.jobDetailSponsorButton}>
+                    <Text style={styles.jobDetailSponsorButtonText}>Learn More</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.jobDetailRequirements}>
+                  <View style={styles.jobDetailReqHeader}>
+                    <View style={styles.jobDetailIcon}>
+                      <Ionicons name="clipboard-outline" size={22} color={BLUE} />
+                    </View>
+                    <Text style={styles.jobDetailReqTitle}>Responsibilities</Text>
                   </View>
+                  {job.responsibilities.map((responsibility, index) => (
+                    <View key={`${responsibility}-${index}`} style={styles.jobDetailBulletRow}>
+                      <View style={styles.jobDetailBullet} />
+                      <Text style={styles.jobDetailBulletText}>{responsibility}</Text>
+                    </View>
+                  ))}
                 </View>
 
                 <View style={styles.jobDetailRequirements}>
@@ -366,6 +462,44 @@ export default function NewsDetailScreen({ route, navigation }) {
                       <Text style={styles.jobDetailBulletText}>{requirement}</Text>
                     </View>
                   ))}
+                </View>
+
+                <View style={styles.jobDetailRequirements}>
+                  <View style={styles.jobDetailReqHeader}>
+                    <View style={styles.jobDetailIcon}>
+                      <Ionicons name="gift-outline" size={22} color={BLUE} />
+                    </View>
+                    <Text style={styles.jobDetailReqTitle}>Benefits</Text>
+                  </View>
+                  <View style={styles.jobDetailBenefitsGrid}>
+                    {job.benefits.map((benefit) => (
+                      <View key={benefit} style={styles.jobDetailBenefit}>
+                        <Ionicons name="checkmark-circle-outline" size={18} color={BLUE} />
+                        <Text style={styles.jobDetailBenefitText}>{benefit}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={styles.jobDetailRequirements}>
+                  <View style={styles.jobDetailReqHeader}>
+                    <View style={styles.jobDetailIcon}>
+                      <Ionicons name="paper-plane-outline" size={22} color={BLUE} />
+                    </View>
+                    <Text style={styles.jobDetailReqTitle}>How to Apply</Text>
+                  </View>
+                  <View style={styles.jobDetailApplyInfo}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.jobDetailInfoLabel}>Email</Text>
+                      <Text style={styles.jobDetailInfoValue}>{job.applyEmail}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.jobDetailInfoLabel}>Application Link</Text>
+                      <TouchableOpacity onPress={openApply}>
+                        <Text style={styles.jobDetailInfoLink} numberOfLines={1}>{job.applyUrl}</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
                 </View>
 
                 <View style={styles.jobDetailCallout}>
@@ -384,7 +518,7 @@ export default function NewsDetailScreen({ route, navigation }) {
                   <Ionicons name="people" size={24} color={BLUE} />
                   <Text style={styles.jobDetailAppliedText}>{job.appliedCount}+ people applied</Text>
                 </View>
-                <TouchableOpacity style={styles.jobDetailApply} onPress={sharePost}>
+                <TouchableOpacity style={styles.jobDetailApply} onPress={openApply}>
                   <Ionicons name="send" size={22} color="#fff" />
                   <Text style={styles.jobDetailApplyText}>Apply Now</Text>
                 </TouchableOpacity>
@@ -776,8 +910,46 @@ const styles = StyleSheet.create({
   jobDetailTagline: { color: '#30384A', fontSize: 14, lineHeight: 19, marginTop: 4 },
   jobDetailNew: { backgroundColor: BLUE, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 8 },
   jobDetailNewText: { color: '#fff', fontSize: 15, fontWeight: '900' },
-  jobDetailTitle: { color: '#090D1C', fontSize: 34, lineHeight: 40, fontWeight: '900', marginTop: 34 },
+  jobDetailTitle: { color: '#090D1C', fontSize: 28, lineHeight: 34, fontWeight: '900', marginTop: 26 },
+  jobDetailCompanyMeta: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 7, marginTop: 10 },
+  jobDetailCompanyMetaText: { color: '#30384A', fontSize: 13, fontWeight: '700' },
+  jobDetailCompanyMetaSalary: { color: BLUE, fontSize: 13, fontWeight: '900' },
+  jobDetailCompanyMetaDot: { color: '#B3B7C4', fontSize: 13, fontWeight: '900' },
+  jobDetailChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 9, marginTop: 18 },
+  jobDetailChip: {
+    borderWidth: 1,
+    borderColor: '#DDD6FE',
+    backgroundColor: '#F7F2FF',
+    borderRadius: 13,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  jobDetailUrgentChip: { borderColor: '#FECACA', backgroundColor: '#FEF2F2' },
+  jobDetailChipText: { color: BLUE, fontSize: 12, fontWeight: '900', textTransform: 'capitalize' },
+  jobDetailUrgentChipText: { color: '#DC2626' },
   jobDetailDivider: { height: 1, backgroundColor: '#E5E7EB', marginVertical: 18 },
+  jobDetailSection: { marginTop: 4 },
+  jobDetailSectionTitle: { color: '#090D1C', fontSize: 19, fontWeight: '900' },
+  jobDetailParagraph: { color: '#111827', fontSize: 15, lineHeight: 24 },
+  jobDetailSponsor: {
+    marginTop: 20,
+    borderWidth: 1,
+    borderColor: '#DDD6FE',
+    borderRadius: 16,
+    padding: 14,
+    backgroundColor: '#FBF7FF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  jobDetailSponsorSmall: { color: MUTED, fontSize: 11, fontWeight: '800' },
+  jobDetailSponsorTitle: { color: '#090D1C', fontSize: 15, fontWeight: '900', marginTop: 3 },
+  jobDetailSponsorText: { color: '#374151', fontSize: 12, lineHeight: 18, marginTop: 4 },
+  jobDetailSponsorButton: { borderRadius: 12, backgroundColor: BLUE, paddingHorizontal: 12, paddingVertical: 10 },
+  jobDetailSponsorButtonText: { color: '#fff', fontSize: 12, fontWeight: '900' },
   jobDetailInfoRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 18 },
   jobDetailIcon: {
     width: 52,
@@ -810,6 +982,24 @@ const styles = StyleSheet.create({
   jobDetailBulletRow: { flexDirection: 'row', gap: 12, marginBottom: 13 },
   jobDetailBullet: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: BLUE, marginTop: 9 },
   jobDetailBulletText: { flex: 1, color: '#111827', fontSize: 16, lineHeight: 25 },
+  jobDetailBenefitsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  jobDetailBenefit: {
+    width: '47%',
+    minHeight: 54,
+    borderWidth: 1,
+    borderColor: '#DDD6FE',
+    borderRadius: 14,
+    backgroundColor: '#F7F2FF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    paddingHorizontal: 10,
+  },
+  jobDetailBenefitText: { flex: 1, color: '#111827', fontSize: 12, fontWeight: '800' },
+  jobDetailApplyInfo: { borderWidth: 1, borderColor: '#DDD6FE', borderRadius: 14, padding: 13, gap: 12 },
+  jobDetailInfoLabel: { color: MUTED, fontSize: 12, fontWeight: '800' },
+  jobDetailInfoValue: { color: '#111827', fontSize: 13, fontWeight: '800', marginTop: 3 },
+  jobDetailInfoLink: { color: BLUE, fontSize: 13, fontWeight: '900', marginTop: 3 },
   jobDetailCallout: {
     marginTop: 16,
     borderWidth: 1,
