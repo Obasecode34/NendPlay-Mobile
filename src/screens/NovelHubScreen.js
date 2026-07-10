@@ -53,6 +53,10 @@ const LICENSE_TYPES = [
   { key: 'cc_by', label: 'CC BY' },
   { key: 'cc_by_sa', label: 'CC BY-SA' },
   { key: 'cc_by_nc', label: 'CC BY-NC' },
+  { key: 'cc_by_nc_sa', label: 'CC BY-NC-SA' },
+  { key: 'cc_by_nd', label: 'CC BY-ND' },
+  { key: 'cc_by_nc_nd', label: 'CC BY-NC-ND' },
+  { key: 'standard_license', label: 'Standard license' },
   { key: 'owned', label: 'Owned' },
   { key: 'permission_granted', label: 'Permission granted' },
 ]
@@ -60,6 +64,12 @@ const LICENSE_TYPES = [
 const LANGUAGE_OPTIONS = [
   'English', 'French', 'Spanish', 'Portuguese', 'Arabic', 'Chinese',
   'Japanese', 'Korean', 'Hindi', 'Yoruba', 'Igbo', 'Hausa',
+]
+
+const CONTENT_ORIGIN_OPTIONS = [
+  { key: 'creator_upload', label: 'Creator upload', helper: 'I own it or have direct permission.' },
+  { key: 'public_domain', label: 'Public domain', helper: 'Legal public-domain source.' },
+  { key: 'creative_commons', label: 'Creative Commons', helper: 'CC license with attribution details.' },
 ]
 
 const NOVEL_CATEGORY_CARDS = [
@@ -127,7 +137,7 @@ export default function NovelHubScreen() {
   const [uploading, setUploading] = useState(false)
   const [uploadForm, setUploadForm] = useState({
     title: '', author: '', description: '', category: 'fiction', file: null, thumbnailFile: null,
-    language: 'English', rightsConfirmed: false, contentOrigin: 'publisher_submission',
+    language: 'English', tags: '', rightsConfirmed: false, contentOrigin: 'creator_upload',
     licenseType: 'unknown', sourceName: '', sourceUrl: '', licenseUrl: '',
     attributionText: '', rightsSummary: '', requiresAttribution: false,
   })
@@ -192,17 +202,20 @@ export default function NovelHubScreen() {
   }
 
   const handleUpload = async () => {
-    if (!uploadForm.file || !uploadForm.title) {
-      Alert.alert('Error', 'Please provide a title and PDF file')
+    if (!uploadForm.file || !uploadForm.title || !uploadForm.author || !uploadForm.category || !uploadForm.language) {
+      Alert.alert('Error', 'Provide title, author, category, language, and PDF file')
       return
     }
     if (!uploadForm.rightsConfirmed) {
       Alert.alert('Rights confirmation required', 'Confirm that you own this PDF or have permission to publish it on NendPlay.')
       return
     }
-    if (['public_domain', 'cc0', 'cc_by', 'cc_by_sa', 'cc_by_nc'].includes(uploadForm.licenseType) && !uploadForm.sourceUrl) {
-      Alert.alert('Source required', 'Public-domain and Creative Commons PDFs need a source URL for verification.')
-      return
+    if (['public_domain', 'creative_commons'].includes(uploadForm.contentOrigin)
+      || ['public_domain', 'cc0', 'cc_by', 'cc_by_sa', 'cc_by_nc', 'cc_by_nc_sa', 'cc_by_nd', 'cc_by_nc_nd'].includes(uploadForm.licenseType)) {
+      if (!uploadForm.sourceUrl) {
+        Alert.alert('Source required', 'Public-domain and Creative Commons PDFs need a source URL for verification.')
+        return
+      }
     }
     setUploading(true)
     try {
@@ -225,6 +238,7 @@ export default function NovelHubScreen() {
       formData.append('category', uploadForm.category)
       formData.append('genre', uploadForm.category)
       formData.append('language', uploadForm.language)
+      formData.append('tags', uploadForm.tags)
       formData.append('contentOrigin', uploadForm.contentOrigin)
       formData.append('rightsConfirmed', uploadForm.rightsConfirmed.toString())
       formData.append('licenseType', uploadForm.licenseType)
@@ -239,7 +253,7 @@ export default function NovelHubScreen() {
       setShowUpload(false)
       setUploadForm({
         title: '', author: '', description: '', category: 'fiction', file: null, thumbnailFile: null,
-        language: 'English', rightsConfirmed: false, contentOrigin: 'publisher_submission',
+        language: 'English', tags: '', rightsConfirmed: false, contentOrigin: 'creator_upload',
         licenseType: 'unknown', sourceName: '', sourceUrl: '', licenseUrl: '',
         attributionText: '', rightsSummary: '', requiresAttribution: false,
       })
@@ -926,18 +940,71 @@ export default function NovelHubScreen() {
 
       <Modal visible={showUpload} animationType="slide" transparent>
         <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' }}>
-          <View style={{ backgroundColor: c.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
-              <Text style={{ color: c.text, fontSize: 18, fontWeight: '900' }}>Upload PDF</Text>
+          <View style={{ backgroundColor: c.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: '90%' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16, gap: 14 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: c.text, fontSize: 18, fontWeight: '900' }}>Upload NovelHub PDF</Text>
+                <Text style={{ color: c.textMuted, fontSize: 12, lineHeight: 18, marginTop: 4 }}>
+                  Add the PDF, cover, genre, language, and legal rights details required for admin review.
+                </Text>
+              </View>
               <TouchableOpacity onPress={() => setShowUpload(false)}>
                 <Ionicons name="close" size={24} color={c.textMuted} />
               </TouchableOpacity>
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={{ backgroundColor: c.surfaceHigh, borderRadius: 14, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: c.border }}>
+                <Text style={{ color: c.text, fontSize: 13, fontWeight: '900', marginBottom: 4 }}>Submission requirements</Text>
+                <Text style={{ color: c.textMuted, fontSize: 12, lineHeight: 18 }}>
+                  NovelHub currently accepts PDF books only. Public-domain and Creative Commons PDFs must include source and license information.
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                style={{
+                  borderWidth: 2,
+                  borderColor: uploadForm.file ? c.primary : c.border,
+                  borderStyle: 'dashed',
+                  borderRadius: 12,
+                  padding: 18,
+                  alignItems: 'center',
+                  marginBottom: 12,
+                }}
+                onPress={handlePickFile}>
+                <Ionicons name="document-outline" size={28} color={c.primary} />
+                <Text style={{ color: c.text, fontSize: 14, marginTop: 8, fontWeight: '900' }}>
+                  {uploadForm.file ? uploadForm.file.name : 'Tap to select PDF *'}
+                </Text>
+                <Text style={{ color: c.textMuted, fontSize: 12, marginTop: 4 }}>
+                  PDF documents only for NovelHub
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{
+                  borderWidth: 2,
+                  borderColor: uploadForm.thumbnailFile ? c.primary : c.border,
+                  borderStyle: 'dashed',
+                  borderRadius: 12,
+                  padding: 16,
+                  alignItems: 'center',
+                  marginBottom: 16,
+                }}
+                onPress={handlePickThumbnail}>
+                <Ionicons name="image-outline" size={26} color={c.primary} />
+                <Text style={{ color: c.text, fontSize: 14, marginTop: 8, fontWeight: '900' }}>
+                  {uploadForm.thumbnailFile ? (uploadForm.thumbnailFile.fileName || 'Thumbnail selected') : 'Tap to select cover thumbnail'}
+                </Text>
+                <Text style={{ color: c.textMuted, fontSize: 12, marginTop: 4 }}>
+                  Optional JPG, PNG, or WebP cover image
+                </Text>
+              </TouchableOpacity>
+
+              <Text style={{ color: c.text, fontWeight: '900', marginBottom: 8 }}>Book details</Text>
               {[
                 { placeholder: 'Title *', key: 'title' },
-                { placeholder: 'Author', key: 'author' },
+                { placeholder: 'Author / publisher *', key: 'author' },
                 { placeholder: 'Description', key: 'description' },
               ].map(({ placeholder, key }) => (
                 <TextInput key={key}
@@ -956,6 +1023,21 @@ export default function NovelHubScreen() {
                   value={uploadForm[key]}
                   onChangeText={(value) => setUploadForm({ ...uploadForm, [key]: value })} />
               ))}
+              <TextInput
+                style={{
+                  backgroundColor: c.surfaceHigh,
+                  borderRadius: 10,
+                  padding: 12,
+                  color: c.text,
+                  fontSize: 14,
+                  marginBottom: 12,
+                  borderWidth: 1,
+                  borderColor: c.border,
+                }}
+                placeholder="Tags (comma separated)"
+                placeholderTextColor={c.textMuted}
+                value={uploadForm.tags}
+                onChangeText={(value) => setUploadForm({ ...uploadForm, tags: value })} />
 
               <Text style={{ color: c.text, fontWeight: '900', marginBottom: 8 }}>Genre</Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
@@ -1006,18 +1088,19 @@ export default function NovelHubScreen() {
               </View>
 
               <Text style={{ color: c.text, fontWeight: '900', marginBottom: 8 }}>Rights and source</Text>
-              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
-                {[
-                  { key: 'publisher_submission', label: 'I own/represent this PDF' },
-                  { key: 'creator_upload', label: 'Permission granted' },
-                ].map((option) => {
+              <Text style={{ color: c.textMuted, fontSize: 12, lineHeight: 18, marginBottom: 10 }}>
+                Choose where this PDF came from. Admins need this information before the document can be approved.
+              </Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+                {CONTENT_ORIGIN_OPTIONS.map((option) => {
                   const active = uploadForm.contentOrigin === option.key
                   return (
                     <TouchableOpacity
                       key={option.key}
                       onPress={() => setUploadForm({ ...uploadForm, contentOrigin: option.key })}
                       style={{
-                        flex: 1,
+                        width: '31%',
+                        minWidth: 98,
                         borderRadius: 14,
                         paddingHorizontal: 10,
                         paddingVertical: 10,
@@ -1025,6 +1108,9 @@ export default function NovelHubScreen() {
                       }}>
                       <Text style={{ color: active ? '#FFFFFF' : c.textMuted, fontSize: 11, fontWeight: '900', textAlign: 'center' }}>
                         {option.label}
+                      </Text>
+                      <Text style={{ color: active ? 'rgba(255,255,255,0.8)' : c.textMuted, fontSize: 9, lineHeight: 13, marginTop: 4, textAlign: 'center' }}>
+                        {option.helper}
                       </Text>
                     </TouchableOpacity>
                   )
@@ -1100,46 +1186,6 @@ export default function NovelHubScreen() {
                 <Text style={{ color: c.textMuted, fontSize: 13, fontWeight: '800' }}>Show attribution for this PDF</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={{
-                  borderWidth: 2,
-                  borderColor: c.border,
-                  borderStyle: 'dashed',
-                  borderRadius: 12,
-                  padding: 20,
-                  alignItems: 'center',
-                  marginBottom: 16,
-                }}
-                onPress={handlePickFile}>
-                <Ionicons name="document-outline" size={28} color={c.primary} />
-                <Text style={{ color: c.text, fontSize: 14, marginTop: 8, fontWeight: '900' }}>
-                  {uploadForm.file ? uploadForm.file.name : 'Tap to select PDF'}
-                </Text>
-                <Text style={{ color: c.textMuted, fontSize: 12, marginTop: 4 }}>
-                  PDF documents only for NovelHub
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={{
-                  borderWidth: 2,
-                  borderColor: uploadForm.thumbnailFile ? c.primary : c.border,
-                  borderStyle: 'dashed',
-                  borderRadius: 12,
-                  padding: 16,
-                  alignItems: 'center',
-                  marginBottom: 16,
-                }}
-                onPress={handlePickThumbnail}>
-                <Ionicons name="image-outline" size={26} color={c.primary} />
-                <Text style={{ color: c.text, fontSize: 14, marginTop: 8, fontWeight: '900' }}>
-                  {uploadForm.thumbnailFile ? (uploadForm.thumbnailFile.fileName || 'Thumbnail selected') : 'Tap to select thumbnail'}
-                </Text>
-                <Text style={{ color: c.textMuted, fontSize: 12, marginTop: 4 }}>
-                  Optional JPG, PNG, or WebP cover image
-                </Text>
-              </TouchableOpacity>
-
               <View style={{ flexDirection: 'row', gap: 12 }}>
                 <TouchableOpacity
                   style={{ flex: 1, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: c.border, alignItems: 'center' }}
@@ -1151,7 +1197,7 @@ export default function NovelHubScreen() {
                   onPress={handleUpload} disabled={uploading}>
                   {uploading
                     ? <ActivityIndicator color="white" size="small" />
-                    : <Text style={{ color: 'white', fontWeight: '900' }}>Upload</Text>
+                    : <Text style={{ color: 'white', fontWeight: '900' }}>Submit for Review</Text>
                   }
                 </TouchableOpacity>
               </View>
