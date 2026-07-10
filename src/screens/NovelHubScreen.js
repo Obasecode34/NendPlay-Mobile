@@ -66,6 +66,50 @@ const LANGUAGE_OPTIONS = [
   'Japanese', 'Korean', 'Hindi', 'Yoruba', 'Igbo', 'Hausa',
 ]
 
+const DOCUMENT_PICKER_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.oasis.opendocument.text',
+  'text/plain',
+  'application/epub+zip',
+  'application/x-mobipocket-ebook',
+  'application/vnd.amazon.ebook',
+  'application/rtf',
+  'text/rtf',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.oasis.opendocument.spreadsheet',
+  'text/csv',
+]
+
+const DOCUMENT_EXTENSION_MIME = {
+  pdf: 'application/pdf',
+  doc: 'application/msword',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  odt: 'application/vnd.oasis.opendocument.text',
+  txt: 'text/plain',
+  epub: 'application/epub+zip',
+  mobi: 'application/x-mobipocket-ebook',
+  rtf: 'application/rtf',
+  ppt: 'application/vnd.ms-powerpoint',
+  pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  xls: 'application/vnd.ms-excel',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  ods: 'application/vnd.oasis.opendocument.spreadsheet',
+  csv: 'text/csv',
+}
+
+function getDocumentExtension(name = '') {
+  return String(name).includes('.') ? String(name).split('.').pop().toLowerCase() : ''
+}
+
+function getUploadMimeType(file = {}) {
+  return file.mimeType || DOCUMENT_EXTENSION_MIME[getDocumentExtension(file.name)] || 'application/octet-stream'
+}
+
 const CONTENT_ORIGIN_OPTIONS = [
   { key: 'creator_upload', label: 'Creator upload', helper: 'I own it or have direct permission.' },
   { key: 'public_domain', label: 'Public domain', helper: 'Legal public-domain source.' },
@@ -73,12 +117,12 @@ const CONTENT_ORIGIN_OPTIONS = [
 ]
 
 const NOVEL_CATEGORY_CARDS = [
-  { key: 'novels', label: 'Novels', subtitle: 'Public PDFs and stories', icon: 'book-outline', genre: 'fiction' },
+  { key: 'novels', label: 'Novels', subtitle: 'Public documents and stories', icon: 'book-outline', genre: 'fiction' },
   { key: 'documents', label: 'Documents', subtitle: 'Reports and papers', icon: 'document-text-outline', genre: 'non-fiction' },
   { key: 'business', label: 'Business & Finance', subtitle: 'Money and enterprise', icon: 'briefcase-outline', genre: 'business' },
   { key: 'romance', label: 'Romance Collection', subtitle: 'Love stories', icon: 'heart-outline', genre: 'love' },
   { key: 'fantasy', label: 'Fantasy', subtitle: 'Eastern and western fantasy', icon: 'sparkles-outline', genre: 'western-fantasy' },
-  { key: 'shorts', label: 'Short Reads', subtitle: 'Quick PDFs', icon: 'flash-outline', genre: 'teen' },
+  { key: 'shorts', label: 'Short Reads', subtitle: 'Quick documents', icon: 'flash-outline', genre: 'teen' },
 ]
 
 const CATALOG_LIMIT = 60
@@ -146,7 +190,7 @@ export default function NovelHubScreen() {
 
   const fetchDocuments = async (query = '', pageToLoad = 1, append = false, genre = activeGenre, language = activeLanguage) => {
     try {
-      const params = { limit: CATALOG_LIMIT, page: pageToLoad, fileType: 'pdf' }
+      const params = { limit: CATALOG_LIMIT, page: pageToLoad }
       if (query) params.search = query
       if (genre && genre !== 'all') params.category = genre
       if (language !== 'all') params.language = language
@@ -171,7 +215,7 @@ export default function NovelHubScreen() {
   const handlePickFile = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: ['application/pdf'],
+        type: DOCUMENT_PICKER_TYPES,
         copyToCacheDirectory: true,
       })
       if (!result.canceled && result.assets?.[0]) {
@@ -203,17 +247,17 @@ export default function NovelHubScreen() {
 
   const handleUpload = async () => {
     if (!uploadForm.file || !uploadForm.title || !uploadForm.author || !uploadForm.category || !uploadForm.language) {
-      Alert.alert('Error', 'Provide title, author, category, language, and PDF file')
+      Alert.alert('Error', 'Provide title, author, category, language, and document file')
       return
     }
     if (!uploadForm.rightsConfirmed) {
-      Alert.alert('Rights confirmation required', 'Confirm that you own this PDF or have permission to publish it on NendPlay.')
+      Alert.alert('Rights confirmation required', 'Confirm that you own this document or have permission to publish it on NendPlay.')
       return
     }
     if (['public_domain', 'creative_commons'].includes(uploadForm.contentOrigin)
       || ['public_domain', 'cc0', 'cc_by', 'cc_by_sa', 'cc_by_nc', 'cc_by_nc_sa', 'cc_by_nd', 'cc_by_nc_nd'].includes(uploadForm.licenseType)) {
       if (!uploadForm.sourceUrl) {
-        Alert.alert('Source required', 'Public-domain and Creative Commons PDFs need a source URL for verification.')
+        Alert.alert('Source required', 'Public-domain and Creative Commons documents need a source URL for verification.')
         return
       }
     }
@@ -223,7 +267,7 @@ export default function NovelHubScreen() {
       formData.append('document', {
         uri: uploadForm.file.uri,
         name: uploadForm.file.name,
-        type: uploadForm.file.mimeType || 'application/pdf',
+        type: getUploadMimeType(uploadForm.file),
       })
       if (uploadForm.thumbnailFile) {
         formData.append('thumbnail', {
@@ -249,7 +293,7 @@ export default function NovelHubScreen() {
       formData.append('rightsSummary', uploadForm.rightsSummary)
       formData.append('requiresAttribution', uploadForm.requiresAttribution.toString())
       await novelService.upload(formData)
-      Alert.alert('Submitted for review', 'PDF uploaded. It will appear in NovelHub after admin approval.')
+      Alert.alert('Submitted for review', 'Document uploaded. It will appear in NovelHub after admin approval.')
       setShowUpload(false)
       setUploadForm({
         title: '', author: '', description: '', category: 'fiction', file: null, thumbnailFile: null,
@@ -266,7 +310,7 @@ export default function NovelHubScreen() {
   const handleFork = async (id) => {
     try {
       await novelService.fork(id)
-      Alert.alert('Forked!', 'You now have your own copy of this PDF.')
+      Alert.alert('Forked!', 'You now have your own copy of this document.')
       fetchDocuments(search, 1, false)
     } catch (err) {
       Alert.alert('Error', err.response?.data?.message || 'Fork failed')
@@ -276,7 +320,7 @@ export default function NovelHubScreen() {
   const handleDownload = async (id) => {
     try {
       const res = await novelService.download(id)
-      Alert.alert('PDF Ready', `File URL: ${res.data.data.fileUrl}\n\nOpen in browser to read or download.`)
+      Alert.alert('Document Ready', `File URL: ${res.data.data.fileUrl}\n\nOpen in browser to read or download.`)
     } catch { Alert.alert('Error', 'Download failed') }
   }
 
@@ -295,7 +339,7 @@ export default function NovelHubScreen() {
         url: fileUrl,
       })
     } catch {
-      Alert.alert('Share failed', 'Unable to prepare this PDF link right now.')
+      Alert.alert('Share failed', 'Unable to prepare this document link right now.')
     }
   }
 
@@ -311,7 +355,7 @@ export default function NovelHubScreen() {
         platform: 'mobile',
       })
       if (res.data.data.alreadyDownloaded) {
-        Alert.alert('Already Downloaded', 'This PDF is already in your NovelHub Downloads tab.')
+        Alert.alert('Already Downloaded', 'This document is already in your NovelHub Downloads tab.')
         setActiveTopTab('downloads')
         setSelectedPdf(null)
         return
@@ -321,8 +365,8 @@ export default function NovelHubScreen() {
         fileUrl,
         contentType: 'document',
         contentId: item._id,
-        title: item.title || res.data.data.title || 'pdf',
-        mimeType: item.mimeType || res.data.data.mimeType || 'application/pdf',
+        title: item.title || res.data.data.title || 'document',
+        mimeType: item.mimeType || res.data.data.mimeType || 'application/octet-stream',
       })
       await upsertLocalDownloadRecord({
         download: res.data.data.download,
@@ -331,11 +375,11 @@ export default function NovelHubScreen() {
         storageKey: savedFile.storageKey,
         storedFileSize: savedFile.storedFileSize || item.fileSize || res.data.data.fileSize || 0,
         snapshot: {
-          title: item.title || res.data.data.title || 'pdf',
+          title: item.title || res.data.data.title || 'document',
           thumbnailUrl: item.thumbnailUrl || '',
-          type: item.fileType || 'pdf',
+          type: item.fileType || 'document',
           category: item.category || item.genre || '',
-          mimeType: item.mimeType || res.data.data.mimeType || 'application/pdf',
+          mimeType: item.mimeType || res.data.data.mimeType || 'application/octet-stream',
           fileUrl,
           licenseType: item.licenseType || 'unknown',
           sourceName: item.sourceName || '',
@@ -351,14 +395,14 @@ export default function NovelHubScreen() {
           storageKey: savedFile.storageKey,
           storedFileSize: savedFile.storedFileSize || item.fileSize || res.data.data.fileSize || 0,
         })
-        Alert.alert('Downloaded', 'Full PDF access is now available in NovelHub Downloads.')
+        Alert.alert('Downloaded', 'Full document access is now available in NovelHub Downloads.')
         setActiveTopTab('downloads')
       } else {
-        Alert.alert('Downloaded', 'This PDF was saved on this device with full read-only access in your NovelHub Downloads tab.')
+        Alert.alert('Downloaded', 'This document was saved on this device with full read-only access in your NovelHub Downloads tab.')
       }
       setSelectedPdf(null)
     } catch (err) {
-      Alert.alert('Download Failed', err.response?.data?.message || 'Unable to prepare this PDF download.')
+      Alert.alert('Download Failed', err.response?.data?.message || 'Unable to prepare this document download.')
     } finally {
       setDownloadingPdf(false)
     }
@@ -720,7 +764,7 @@ export default function NovelHubScreen() {
                 <View style={{ flex: 1, paddingTop: 8 }}>
                   <Text style={{ color: c.text, fontSize: 18, fontWeight: '900' }} numberOfLines={2}>{item.title}</Text>
                   <Text style={{ color: c.textMuted, fontSize: 13, lineHeight: 19, marginTop: 7 }} numberOfLines={2}>
-                    {item.description || item.author || 'PDF document available in NovelHub.'}
+                    {item.description || item.author || 'Document available in NovelHub.'}
                   </Text>
                   <View style={[s.genreBadge, { marginTop: 9 }]}>
                     <Text style={s.genreBadgeText}>{genre.label}</Text>
@@ -739,7 +783,7 @@ export default function NovelHubScreen() {
     const genre = genreMap[getDocumentGenre(selectedPdf)] || PDF_GENRES[4]
     const chapterOne = selectedPdf.description || selectedPdf.author
       ? `${selectedPdf.description || ''}${selectedPdf.author ? `\n\nAuthor: ${selectedPdf.author}` : ''}`
-      : 'Chapter One preview is available inside NendPlay. Download the PDF to continue reading the complete document from chapter two onward.'
+      : 'Chapter One preview is available inside NendPlay. Download the document to continue reading the complete file from chapter two onward.'
 
     return (
       <Modal visible transparent animationType="slide" onRequestClose={() => setSelectedPdf(null)}>
@@ -815,7 +859,7 @@ export default function NovelHubScreen() {
                   Chapter Two is locked
                 </Text>
                 <Text style={{ color: c.textMuted, textAlign: 'center', lineHeight: 20, marginTop: 7 }}>
-                  Download this PDF to unlock full access in the NovelHub Downloads tab. Downloaded PDFs are read-only.
+                  Download this document to unlock full access in the NovelHub Downloads tab. Downloaded files are read-only.
                 </Text>
                 <TouchableOpacity
                   onPress={() => downloadPdf(selectedPdf)}
@@ -832,7 +876,7 @@ export default function NovelHubScreen() {
                   {downloadingPdf ? (
                     <ActivityIndicator color="#FFFFFF" size="small" />
                   ) : (
-                    <Text style={{ color: '#FFFFFF', fontWeight: '900' }}>Download Full PDF</Text>
+                    <Text style={{ color: '#FFFFFF', fontWeight: '900' }}>Download Full Document</Text>
                   )}
                 </TouchableOpacity>
               </View>
@@ -874,15 +918,15 @@ export default function NovelHubScreen() {
         <TouchableOpacity
           onPress={loadMoreDocuments}
           style={{ alignSelf: 'center', marginTop: 6, backgroundColor: c.surface, borderWidth: 1, borderColor: c.border, borderRadius: 16, paddingHorizontal: 18, paddingVertical: 11 }}>
-          <Text style={{ color: c.text, fontWeight: '900' }}>Load more PDFs</Text>
+          <Text style={{ color: c.text, fontWeight: '900' }}>Load more documents</Text>
         </TouchableOpacity>
       ) : null}
       {!documents.length ? (
         <View style={{ alignItems: 'center', paddingTop: 60 }}>
           <Ionicons name="book-outline" size={46} color={c.textMuted} />
-          <Text style={{ color: c.text, fontSize: 18, fontWeight: '900', marginTop: 12 }}>No PDF documents yet</Text>
+          <Text style={{ color: c.text, fontSize: 18, fontWeight: '900', marginTop: 12 }}>No documents yet</Text>
           <Text style={{ color: c.textMuted, fontSize: 14, marginTop: 6, textAlign: 'center', paddingHorizontal: 30 }}>
-            Upload PDFs by genre to build the NovelHub catalog.
+            Upload documents by genre to build the NovelHub catalog.
           </Text>
         </View>
       ) : null}
@@ -907,7 +951,7 @@ export default function NovelHubScreen() {
             <Ionicons name="search" size={14} color={c.textMuted} />
             <TextInput
               style={s.searchInput}
-              placeholder="Search PDF novels, authors, genres..."
+              placeholder="Search novels, documents, authors, genres..."
               placeholderTextColor={c.textMuted}
               value={search}
               onChangeText={(value) => {
@@ -943,9 +987,9 @@ export default function NovelHubScreen() {
           <View style={{ backgroundColor: c.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: '90%' }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16, gap: 14 }}>
               <View style={{ flex: 1 }}>
-                <Text style={{ color: c.text, fontSize: 18, fontWeight: '900' }}>Upload NovelHub PDF</Text>
+                <Text style={{ color: c.text, fontSize: 18, fontWeight: '900' }}>Upload NovelHub Document</Text>
                 <Text style={{ color: c.textMuted, fontSize: 12, lineHeight: 18, marginTop: 4 }}>
-                  Add the PDF, cover, genre, language, and legal rights details required for admin review.
+                  Add the document, cover, genre, language, and legal rights details required for admin review.
                 </Text>
               </View>
               <TouchableOpacity onPress={() => setShowUpload(false)}>
@@ -957,7 +1001,7 @@ export default function NovelHubScreen() {
               <View style={{ backgroundColor: c.surfaceHigh, borderRadius: 14, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: c.border }}>
                 <Text style={{ color: c.text, fontSize: 13, fontWeight: '900', marginBottom: 4 }}>Submission requirements</Text>
                 <Text style={{ color: c.textMuted, fontSize: 12, lineHeight: 18 }}>
-                  NovelHub currently accepts PDF books only. Public-domain and Creative Commons PDFs must include source and license information.
+                  NovelHub accepts PDF, DOC, DOCX, TXT, ODT, ODS, EPUB, XLS, XLSX, MOBI, RTF, PPT, PPTX, and CSV. Public-domain and Creative Commons documents must include source and license information.
                 </Text>
               </View>
 
@@ -974,10 +1018,10 @@ export default function NovelHubScreen() {
                 onPress={handlePickFile}>
                 <Ionicons name="document-outline" size={28} color={c.primary} />
                 <Text style={{ color: c.text, fontSize: 14, marginTop: 8, fontWeight: '900' }}>
-                  {uploadForm.file ? uploadForm.file.name : 'Tap to select PDF *'}
+                  {uploadForm.file ? uploadForm.file.name : 'Tap to select document *'}
                 </Text>
                 <Text style={{ color: c.textMuted, fontSize: 12, marginTop: 4 }}>
-                  PDF documents only for NovelHub
+                  PDF, Word, OpenDocument, EPUB, MOBI, Excel, PowerPoint, RTF, TXT, and CSV
                 </Text>
               </TouchableOpacity>
 
@@ -1089,7 +1133,7 @@ export default function NovelHubScreen() {
 
               <Text style={{ color: c.text, fontWeight: '900', marginBottom: 8 }}>Rights and source</Text>
               <Text style={{ color: c.textMuted, fontSize: 12, lineHeight: 18, marginBottom: 10 }}>
-                Choose where this PDF came from. Admins need this information before the document can be approved.
+                Choose where this document came from. Admins need this information before the document can be approved.
               </Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
                 {CONTENT_ORIGIN_OPTIONS.map((option) => {
@@ -1171,7 +1215,7 @@ export default function NovelHubScreen() {
                   color={uploadForm.rightsConfirmed ? c.primary : c.textMuted}
                 />
                 <Text style={{ color: c.text, fontSize: 13, fontWeight: '900', flex: 1 }}>
-                  I confirm I own this PDF or have legal permission to publish it on NendPlay.
+                  I confirm I own this document or have legal permission to publish it on NendPlay.
                 </Text>
               </TouchableOpacity>
 
@@ -1183,7 +1227,7 @@ export default function NovelHubScreen() {
                   size={20}
                   color={uploadForm.requiresAttribution ? c.primary : c.textMuted}
                 />
-                <Text style={{ color: c.textMuted, fontSize: 13, fontWeight: '800' }}>Show attribution for this PDF</Text>
+                <Text style={{ color: c.textMuted, fontSize: 13, fontWeight: '800' }}>Show attribution for this document</Text>
               </TouchableOpacity>
 
               <View style={{ flexDirection: 'row', gap: 12 }}>

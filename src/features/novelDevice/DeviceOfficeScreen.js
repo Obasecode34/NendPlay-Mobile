@@ -16,14 +16,19 @@ const DOCUMENT_TYPES = [
   'application/pdf',
   'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.oasis.opendocument.text',
   'application/vnd.ms-powerpoint',
   'application/vnd.openxmlformats-officedocument.presentationml.presentation',
   'application/vnd.ms-excel',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.oasis.opendocument.spreadsheet',
   'text/plain',
   'text/csv',
   'application/epub+zip',
+  'application/x-mobipocket-ebook',
+  'application/vnd.amazon.ebook',
   'application/rtf',
+  'text/rtf',
 ]
 
 const FILTERS = [
@@ -42,13 +47,16 @@ const MIME_TYPES = {
   pdf: 'application/pdf',
   doc: 'application/msword',
   docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  odt: 'application/vnd.oasis.opendocument.text',
   xls: 'application/vnd.ms-excel',
   xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  ods: 'application/vnd.oasis.opendocument.spreadsheet',
   ppt: 'application/vnd.ms-powerpoint',
   pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
   txt: 'text/plain',
   csv: 'text/csv',
   epub: 'application/epub+zip',
+  mobi: 'application/x-mobipocket-ebook',
   rtf: 'application/rtf',
 }
 
@@ -60,11 +68,11 @@ function getExtension(name = '') {
 function getDocType(file = {}) {
   const ext = getExtension(file.name)
   if (ext === 'pdf') return 'pdf'
-  if (['doc', 'docx', 'rtf'].includes(ext)) return 'word'
-  if (['xls', 'xlsx', 'csv'].includes(ext)) return 'sheet'
+  if (['doc', 'docx', 'odt', 'rtf'].includes(ext)) return 'word'
+  if (['xls', 'xlsx', 'ods', 'csv'].includes(ext)) return 'sheet'
   if (['ppt', 'pptx'].includes(ext)) return 'slide'
   if (['txt'].includes(ext)) return 'text'
-  if (['epub'].includes(ext)) return 'ebook'
+  if (['epub', 'mobi'].includes(ext)) return 'ebook'
   return 'other'
 }
 
@@ -100,13 +108,16 @@ function getFallbackMimeTypes(item = {}) {
       MIME_TYPES[ext],
       'application/msword',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.oasis.opendocument.text',
       'application/rtf',
+      'text/rtf',
       'application/*',
     ],
     sheet: [
       MIME_TYPES[ext],
       'application/vnd.ms-excel',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.oasis.opendocument.spreadsheet',
       'text/csv',
       'application/*',
     ],
@@ -117,7 +128,7 @@ function getFallbackMimeTypes(item = {}) {
       'application/*',
     ],
     text: ['text/plain', 'text/*'],
-    ebook: ['application/epub+zip', 'application/*'],
+    ebook: ['application/epub+zip', 'application/x-mobipocket-ebook', 'application/vnd.amazon.ebook', 'application/*'],
     other: ['application/octet-stream', 'application/*'],
   }
   return [...new Set([getMimeType(item), ...(fallbacks[type] || fallbacks.other)].filter(Boolean))]
@@ -353,7 +364,7 @@ export default function DeviceOfficeScreen({ theme }) {
                 NendPlay Office
               </Text>
               <Text style={{ color: c.textMuted, fontSize: 12, marginTop: 4 }}>
-                PDF, Word, Excel, PowerPoint, TXT, CSV, EPUB
+                PDF, Word, OpenDocument, Excel, PowerPoint, TXT, CSV, EPUB, MOBI, RTF
               </Text>
             </View>
             <TouchableOpacity
