@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import useThemeStore from '../stores/themeStore'
 import useAuthStore from '../services/authStore.native'
-import { mediaService, novelService, notificationService } from '../services/index'
+import { mediaService, newsService, novelService, notificationService } from '../services/index'
 import AdBanner from '../components/ads/AdBanner'
 import NativeAdvancedAd from '../components/ads/NativeAdvancedAd'
 import NendPlayAdCard from '../components/ads/NendPlayAdCard'
@@ -421,16 +421,37 @@ function DocumentCard({ item, onPress, theme }) {
   )
 }
 
-function NewsMiniCard({ title, subtitle, icon, onPress, theme }) {
+function getNewsTitle(article) {
+  return article?.header || article?.title || 'NendPlay News'
+}
+
+function getNewsImage(article) {
+  return article?.imageUrl || article?.thumbnailUrl || article?.mediaFiles?.find((item) => item.type === 'image')?.url || ''
+}
+
+function getNewsSubtitle(article) {
+  const source = article?.source || (article?.kind === 'nendplay' ? 'NendPlay News' : 'News')
+  const category = article?.category || article?.categories?.[0] || 'Top Stories'
+  return `${source} • ${category}`
+}
+
+function NewsMiniCard({ article, title, subtitle, icon, onPress, theme }) {
   const c = theme.colors
+  const resolvedTitle = article ? getNewsTitle(article) : title
+  const resolvedSubtitle = article ? getNewsSubtitle(article) : subtitle
+  const image = article ? getNewsImage(article) : ''
   return (
     <TouchableOpacity activeOpacity={0.84} onPress={onPress} style={{ width: '100%', minHeight: 72, borderRadius: 10, padding: 10, backgroundColor: c.surface, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', flexDirection: 'row', gap: 10 }}>
-      <View style={{ width: 52, height: 52, borderRadius: 9, backgroundColor: 'rgba(139,92,246,0.22)', alignItems: 'center', justifyContent: 'center' }}>
-        <Ionicons name={icon} size={24} color={c.primary} />
+      <View style={{ width: 52, height: 52, borderRadius: 9, overflow: 'hidden', backgroundColor: 'rgba(139,92,246,0.22)', alignItems: 'center', justifyContent: 'center' }}>
+        {image ? (
+          <Image source={{ uri: image }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+        ) : (
+          <Ionicons name={icon || 'newspaper-outline'} size={24} color={c.primary} />
+        )}
       </View>
       <View style={{ flex: 1 }}>
-        <Text numberOfLines={2} style={{ color: c.text, fontSize: 11, fontWeight: '900' }}>{title}</Text>
-        <Text numberOfLines={1} style={{ color: c.textMuted, fontSize: 10, marginTop: 5 }}>{subtitle}</Text>
+        <Text numberOfLines={2} style={{ color: c.text, fontSize: 11, fontWeight: '900' }}>{resolvedTitle}</Text>
+        <Text numberOfLines={1} style={{ color: c.textMuted, fontSize: 10, marginTop: 5 }}>{resolvedSubtitle}</Text>
       </View>
     </TouchableOpacity>
   )
@@ -567,6 +588,8 @@ export default function HomeScreen({ navigation }) {
   const [featuredItems, setFeaturedItems] = useState([])
   const [featuredIndex, setFeaturedIndex] = useState(0)
   const [shuffleSeed, setShuffleSeed] = useState(Date.now())
+  const [newsHighlights, setNewsHighlights] = useState([])
+  const [newsHighlightSeed, setNewsHighlightSeed] = useState(Date.now())
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [search, setSearch] = useState('')
@@ -626,6 +649,12 @@ export default function HomeScreen({ navigation }) {
   }, [])
 
   useEffect(() => {
+    fetchNewsHighlights()
+    const timer = setInterval(fetchNewsHighlights, 180000)
+    return () => clearInterval(timer)
+  }, [])
+
+  useEffect(() => {
     if (!featuredItems.length) return
     heroRef.current?.scrollToOffset({
       offset: featuredIndex * HERO_WIDTH,
@@ -674,6 +703,17 @@ export default function HomeScreen({ navigation }) {
     finally { setLoading(false); setRefreshing(false); setLoadingMoreMedia(false) }
   }
 
+  const fetchNewsHighlights = async () => {
+    try {
+      const res = await newsService.getDaily({ section: 'news', tab: 'for-you', limit: 12, page: 1 })
+      const articles = res.data?.data?.articles || []
+      setNewsHighlights(seededShuffleItems(articles, Date.now()).slice(0, 4))
+      setNewsHighlightSeed(Date.now())
+    } catch {
+      setNewsHighlights([])
+    }
+  }
+
   const handleSearch = async (query, pageToLoad = 1, append = false) => {
     setSearch(query)
     if (!query.trim()) {
@@ -714,6 +754,14 @@ export default function HomeScreen({ navigation }) {
       return
     }
     navigation.navigate('MediaPlayer', { mediaId: item._id })
+  }
+
+  const handleNewsHighlightPress = (article) => {
+    if (!article) {
+      navigation.navigate('DailyNews')
+      return
+    }
+    navigation.navigate('NewsDetail', { newsId: article._id || article.id, article })
   }
 
   const handleOpenMovieCategory = () => {
@@ -757,12 +805,9 @@ export default function HomeScreen({ navigation }) {
   const novelPreviewItems = documents.slice(0, 10)
   const gridPosterWidth = Math.floor((width - 44) / 3)
   const landscapeGridWidth = Math.floor((width - 44) / 2)
-  const newsHighlights = [
-    { title: 'Global Leaders Meet for Peace Summit', subtitle: '2h ago', icon: 'earth-outline' },
-    { title: 'Tech Innovation Changing the World', subtitle: '5h ago', icon: 'hardware-chip-outline' },
-    { title: 'Sports Update: Local Team Wins Again', subtitle: '1h ago', icon: 'football-outline' },
-    { title: 'Economy Shows Signs of Recovery', subtitle: '3h ago', icon: 'stats-chart-outline' },
-  ]
+  const visibleNewsHighlights = useMemo(() => (
+    seededShuffleItems(newsHighlights, newsHighlightSeed).slice(0, 4)
+  ), [newsHighlights, newsHighlightSeed])
 
   const onRefresh = useCallback(() => {
     setRefreshing(true)
@@ -1195,13 +1240,19 @@ export default function HomeScreen({ navigation }) {
           <View style={{ marginBottom: 24 }}>
             <SectionHeader title="News Highlights" onSeeAll={() => navigation.navigate('DailyNews')} theme={theme} />
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, columnGap: 8, rowGap: 10 }}>
-              {newsHighlights.map((item) => (
-                <View key={item.title} style={{ width: landscapeGridWidth }}>
+              {(visibleNewsHighlights.length ? visibleNewsHighlights : [
+                { title: 'Global live briefing', subtitle: 'NendPlay News', icon: 'earth-outline' },
+                { title: 'Nigeria today', subtitle: 'NendPlay News', icon: 'newspaper-outline' },
+                { title: 'Technology digest', subtitle: 'NendPlay News', icon: 'hardware-chip-outline' },
+                { title: 'Sports pulse', subtitle: 'NendPlay News', icon: 'football-outline' },
+              ]).map((item) => (
+                <View key={item._id || item.id || item.url || item.title} style={{ width: landscapeGridWidth }}>
                   <NewsMiniCard
+                    article={item._id || item.id || item.url ? item : null}
                     title={item.title}
                     subtitle={item.subtitle}
                     icon={item.icon}
-                    onPress={() => navigation.navigate('DailyNews')}
+                    onPress={() => handleNewsHighlightPress(item._id || item.id || item.url ? item : null)}
                     theme={theme}
                   />
                 </View>
