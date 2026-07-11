@@ -199,10 +199,11 @@ export default function MediaPlayerScreen({ route, navigation }) {
         Alert.alert('Already Downloaded', 'This media is already in your downloads')
         return
       }
-      const fileUrl = playbackUrl || streamUrl || res.data.data.fileUrl
+      const fileUrl = res.data.data.fileUrl || media?.mediaUrl || media?.fileUrl || playbackUrl || streamUrl
+      const normalizedFileUrl = String(fileUrl || '').toLowerCase()
       const forceHls = Boolean(
-        media?.hlsUrl ||
-        media?.playbackIds?.length ||
+        normalizedFileUrl.includes('.m3u8') ||
+        normalizedFileUrl.includes('/hls') ||
         String(media?.mimeType || res.data.data.mimeType || '').toLowerCase().includes('mpegurl')
       )
       const savedFile = await saveDownloadFile({
