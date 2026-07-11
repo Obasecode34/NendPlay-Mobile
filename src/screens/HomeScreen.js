@@ -1314,7 +1314,7 @@ export default function HomeScreen({ navigation }) {
             </View>
           )}
 
-          {genreSections.slice(0, 4).map((section, index) => (
+          {genreSections.map((section, index) => (
             <React.Fragment key={section.genre}>
               <View style={{ marginBottom: 24 }}>
                 <SectionHeader title={section.genre} onSeeAll={handleOpenMovieCategory} theme={theme} />
@@ -1322,6 +1322,10 @@ export default function HomeScreen({ navigation }) {
                   {section.items.slice(0, 16).map((item) => (
                     <PosterCard key={item._id} item={item} onPress={handleMediaPress} theme={theme} width={gridPosterWidth} height={gridPosterWidth * 1.38} />
                   ))}
+                </View>
+                <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
+                  <AdBanner style={{ marginHorizontal: 0, marginBottom: 12 }} />
+                  <NendPlayAdCard placement="home" style={{ marginHorizontal: 0 }} />
                 </View>
               </View>
               {index === 1 ? <NativeAdvancedAd /> : null}

@@ -32,6 +32,21 @@ function getCollectionLabel(item = {}) {
   return item.title || 'Media'
 }
 
+function normalizeLabel(value = '') {
+  return String(value).trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+}
+
+function getMediaLabels(item = {}) {
+  return [
+    ...(Array.isArray(item.genres) ? item.genres : []),
+    ...(Array.isArray(item.categories) ? item.categories : []),
+    ...(Array.isArray(item.navigationLabels) ? item.navigationLabels : []),
+    item.genre,
+    item.category,
+    item.type,
+  ].filter(Boolean).flatMap((value) => String(value).split(',')).map(normalizeLabel).filter(Boolean)
+}
+
 export default function MediaPlayerScreen({ route, navigation }) {
   const { mediaId, localUri, offlineMedia } = route.params
   const { theme } = useThemeStore()
@@ -67,6 +82,8 @@ export default function MediaPlayerScreen({ route, navigation }) {
   const [brightness, setBrightness] = useState(0.72)
   const [detailsTab, setDetailsTab] = useState('overview')
   const [autoPlayNext, setAutoPlayNext] = useState(true)
+  const [relatedMedia, setRelatedMedia] = useState([])
+  const [overviewExpanded, setOverviewExpanded] = useState(false)
   const videoViewRef = useRef(null)
   const lastTapRef = useRef({ side: null, time: 0 })
   const historyRecordedRef = useRef(false)
@@ -160,6 +177,22 @@ export default function MediaPlayerScreen({ route, navigation }) {
         || (a.partNumber || 0) - (b.partNumber || 0)
         || new Date(a.createdAt || 0) - new Date(b.createdAt || 0)
       )))
+      try {
+        const relatedRes = await mediaService.getAll({ type: currentMedia.type, limit: 80 })
+        const currentLabels = new Set(getMediaLabels(currentMedia))
+        const nextRelated = (relatedRes.data.data.media || [])
+          .filter((item) => item._id !== mediaId)
+          .map((item) => ({
+            item,
+            score: getMediaLabels(item).reduce((count, label) => count + (currentLabels.has(label) ? 1 : 0), 0),
+          }))
+          .filter(({ score }) => score > 0)
+          .sort((a, b) => b.score - a.score)
+          .map(({ item }) => item)
+        setRelatedMedia(nextRelated)
+      } catch {
+        setRelatedMedia([])
+      }
       setLocked(res.data.data.locked)
       if (!res.data.data.locked) {
         const playbackRes = await mediaService.getPlayback(mediaId)
@@ -584,14 +617,16 @@ export default function MediaPlayerScreen({ route, navigation }) {
 
   const progressPercent = duration ? Math.max(0, Math.min(100, (position / duration) * 100)) : 0
   const thumbnailUri = media ? mediaService.getThumbnailUrl(media) || media.thumbnailUrl || '' : ''
-  const nextUp = collectionItems.find((item) => item._id !== mediaId) || collectionItems[0]
-  const moreLikeThis = collectionItems.filter((item) => item._id !== mediaId).slice(0, 8)
+  const nextUp = collectionItems.find((item) => item._id !== mediaId) || relatedMedia[0] || collectionItems[0]
+  const moreLikeThis = (relatedMedia.length ? relatedMedia : collectionItems.filter((item) => item._id !== mediaId)).slice(0, 8)
   const genreText = Array.isArray(media?.genres) && media.genres.length
     ? media.genres.slice(0, 3).join(', ')
     : media?.genre || media?.category || 'Entertainment'
   const castText = Array.isArray(media?.cast) && media.cast.length
     ? media.cast.join(', ')
     : media?.artist || 'NendPlay Creators'
+  const overviewText = media?.description || 'No overview has been added for this media yet.'
+  const canToggleOverview = overviewText.length > 100
 
   return (
     <View style={s.container}>
@@ -805,9 +840,18 @@ export default function MediaPlayerScreen({ route, navigation }) {
 
           {detailsTab === 'overview' ? (
             <View style={{ flexDirection: width > 420 ? 'row' : 'column', gap: 18 }}>
-              <Text style={[s.description, { flex: 1 }]}>
-                {media?.description || 'No overview has been added for this media yet.'}
-              </Text>
+              <View style={{ flex: 1 }}>
+                <Text style={s.description} numberOfLines={overviewExpanded ? undefined : 1}>
+                  {overviewText}
+                </Text>
+                {canToggleOverview ? (
+                  <TouchableOpacity onPress={() => setOverviewExpanded((value) => !value)} activeOpacity={0.82}>
+                    <Text style={{ color: c.primary, fontSize: 13, fontWeight: '900', marginTop: 4 }}>
+                      {overviewExpanded ? 'View less' : 'Read more'}
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
               <View style={[s.twoColInfo, width <= 420 && { borderLeftWidth: 0, paddingLeft: 0 }]}>
                 <Text style={s.meta}>Director    {media?.director || 'NendPlay Studios'}</Text>
                 <Text style={s.meta}>Cast        {castText}</Text>
