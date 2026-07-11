@@ -46,6 +46,7 @@ const HOME_TABS = [
 const HOME_PAGE_LIMIT = 120
 const CATEGORY_TILES = [
   { label: 'All', icon: 'filter-outline', terms: [] },
+  { label: 'Education', terms: ['education', 'educational', 'learning', 'school', 'tutorial'] },
   { label: 'Hollywood', terms: ['hollywood'] },
   { label: 'Nollywood', terms: ['nollywood', 'nigeria', 'naija'] },
   { label: 'Bollywood', terms: ['bollywood', 'india', 'hindi'] },
@@ -61,7 +62,7 @@ const CATEGORY_TILES = [
 const MOVIE_GENRES = [
   'Action', 'Adventure', 'Sports', 'Martial Arts', 'Comedy', 'Drama', 'Romance',
   'Horror', 'Mystery', 'Crime', 'Fantasy', 'Science Fiction', 'Animation',
-  'Family', 'Musical', 'Documentary', 'War', 'Western', 'Biography', 'WWE',
+  'Family', 'Musical', 'Documentary', 'War', 'Western', 'Biography', 'Education', 'WWE',
 ]
 
 function getCategoryLabel(type) {
