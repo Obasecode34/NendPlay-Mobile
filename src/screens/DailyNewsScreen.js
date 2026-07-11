@@ -111,6 +111,7 @@ function getJobMeta(item = {}) {
     experience: item.experience || item.yearsExperience || item.subHeader || '2 - 4 years',
     deadline: formatDate(item.deadline || item.applicationDeadline || item.publishedAt || item.createdAt),
     appliedCount: item.appliedCount || item.applicationCount || 120,
+    summary: item.subHeader || item.summary || 'Open this job for full details.',
     requirements: getJobRequirements(item),
   }
 }
@@ -241,13 +242,8 @@ function JobStory({ item, onPress }) {
       </View>
 
       <View style={styles.jobRequirementBlock}>
-        <Text style={styles.jobRequirementTitle}>Requirements</Text>
-        {job.requirements.slice(0, 3).map((requirement, index) => (
-          <View key={`${requirement}-${index}`} style={styles.jobBulletRow}>
-            <View style={styles.jobBullet} />
-            <Text style={styles.jobBulletText} numberOfLines={1}>{requirement}</Text>
-          </View>
-        ))}
+        <Text style={styles.jobRequirementTitle}>Short Summary</Text>
+        <Text style={styles.jobBulletText} numberOfLines={3}>{job.summary}</Text>
       </View>
 
       <View style={styles.jobCallout}>

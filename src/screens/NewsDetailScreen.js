@@ -87,6 +87,10 @@ function getJobRequirements(post = {}) {
   return [post.subHeader || 'Relevant experience and strong communication skills required.']
 }
 
+function getJobSummary(post = {}) {
+  return post.body || post.jobSummary || post.summary || post.subHeader || 'Full job details will be provided by the hiring team.'
+}
+
 function getJobResponsibilities(post = {}) {
   const lines = getJobLines(post)
   if (Array.isArray(post.responsibilities) && post.responsibilities.length) return post.responsibilities
@@ -99,7 +103,6 @@ function getJobResponsibilities(post = {}) {
 }
 
 function getJobMeta(post = {}) {
-  const lines = getJobLines(post)
   const category = getCategory(post)
   return {
     company: post.company || post.source || 'NendPlay Media',
@@ -115,13 +118,13 @@ function getJobMeta(post = {}) {
     level: post.level || 'Mid-Level',
     urgency: post.urgency || 'Urgent',
     category,
-    summary: post.summary || post.jobSummary || post.subHeader || lines[0] || 'We are looking for a skilled and passionate professional to join our dynamic team.',
+    summary: getJobSummary(post),
     responsibilities: getJobResponsibilities(post),
     appliedCount: post.appliedCount || post.applicationCount || 120,
     applyEmail: post.applyEmail || post.contactEmail || 'careers@nendplaymedia.com',
     applyUrl: post.applyUrl || post.applicationUrl || 'https://nendplay.com/careers',
     requirements: getJobRequirements(post),
-    benefits: ['Health Insurance', 'Remote Work', 'Paid Leave', 'Career Growth', 'Pension Plan'],
+    benefits: Array.isArray(post.benefits) ? post.benefits.filter(Boolean) : [],
   }
 }
 
@@ -232,6 +235,7 @@ export default function NewsDetailScreen({ route, navigation }) {
   const [comment, setComment] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [replyTarget, setReplyTarget] = useState(null)
+  const [adRefreshKey, setAdRefreshKey] = useState(() => Date.now())
 
   const videos = useMemo(() => (post?.mediaFiles || []).filter((item) => item.type === 'video'), [post])
   const audios = useMemo(() => (post?.mediaFiles || []).filter((item) => item.type === 'audio'), [post])
@@ -242,6 +246,11 @@ export default function NewsDetailScreen({ route, navigation }) {
     if (!newsId) return
     loadPost()
   }, [newsId])
+
+  useEffect(() => {
+    const timer = setInterval(() => setAdRefreshKey(Date.now()), 120000)
+    return () => clearInterval(timer)
+  }, [])
 
   const loadPost = async () => {
     setLoading(true)
@@ -420,19 +429,10 @@ export default function NewsDetailScreen({ route, navigation }) {
                     </View>
                     <Text style={styles.jobDetailSectionTitle}>Job Summary</Text>
                   </View>
-                  <Text style={styles.jobDetailParagraph}>{job.summary}</Text>
+                  <Text style={styles.jobDetailParagraph}>{String(job.summary).replace(/\n{2,}/g, '\n\n')}</Text>
                 </View>
 
-                <View style={styles.jobDetailSponsor}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.jobDetailSponsorSmall}>Sponsored</Text>
-                    <Text style={styles.jobDetailSponsorTitle}>Grow your brand with NendPlay Ads</Text>
-                    <Text style={styles.jobDetailSponsorText}>Reach professionals and talent on NendPlay.</Text>
-                  </View>
-                  <TouchableOpacity style={styles.jobDetailSponsorButton}>
-                    <Text style={styles.jobDetailSponsorButtonText}>Learn More</Text>
-                  </TouchableOpacity>
-                </View>
+                <NendPlayAdCard key={`career-nendplay-${adRefreshKey}`} placement="news" style={styles.jobDetailAdSlot} />
 
                 <View style={styles.jobDetailRequirements}>
                   <View style={styles.jobDetailReqHeader}>
@@ -442,12 +442,11 @@ export default function NewsDetailScreen({ route, navigation }) {
                     <Text style={styles.jobDetailReqTitle}>Responsibilities</Text>
                   </View>
                   {job.responsibilities.map((responsibility, index) => (
-                    <View key={`${responsibility}-${index}`} style={styles.jobDetailBulletRow}>
-                      <View style={styles.jobDetailBullet} />
-                      <Text style={styles.jobDetailBulletText}>{responsibility}</Text>
-                    </View>
+                    <Text key={`${responsibility}-${index}`} style={styles.jobDetailParagraphItem}>{responsibility}</Text>
                   ))}
                 </View>
+
+                <AdBanner key={`career-responsibilities-ad-${adRefreshKey}`} style={styles.jobDetailAdSlot} horizontalPadding={48} />
 
                 <View style={styles.jobDetailRequirements}>
                   <View style={styles.jobDetailReqHeader}>
@@ -457,29 +456,30 @@ export default function NewsDetailScreen({ route, navigation }) {
                     <Text style={styles.jobDetailReqTitle}>Requirements</Text>
                   </View>
                   {job.requirements.map((requirement, index) => (
-                    <View key={`${requirement}-${index}`} style={styles.jobDetailBulletRow}>
-                      <View style={styles.jobDetailBullet} />
-                      <Text style={styles.jobDetailBulletText}>{requirement}</Text>
-                    </View>
+                    <Text key={`${requirement}-${index}`} style={styles.jobDetailParagraphItem}>{requirement}</Text>
                   ))}
                 </View>
 
-                <View style={styles.jobDetailRequirements}>
-                  <View style={styles.jobDetailReqHeader}>
-                    <View style={styles.jobDetailIcon}>
-                      <Ionicons name="gift-outline" size={22} color={BLUE} />
-                    </View>
-                    <Text style={styles.jobDetailReqTitle}>Benefits</Text>
-                  </View>
-                  <View style={styles.jobDetailBenefitsGrid}>
-                    {job.benefits.map((benefit) => (
-                      <View key={benefit} style={styles.jobDetailBenefit}>
-                        <Ionicons name="checkmark-circle-outline" size={18} color={BLUE} />
-                        <Text style={styles.jobDetailBenefitText}>{benefit}</Text>
+                <NativeAdvancedAd key={`career-requirements-ad-${adRefreshKey}`} style={styles.jobDetailAdSlot} />
+
+                {job.benefits.length > 0 && (
+                  <View style={styles.jobDetailRequirements}>
+                    <View style={styles.jobDetailReqHeader}>
+                      <View style={styles.jobDetailIcon}>
+                        <Ionicons name="gift-outline" size={22} color={BLUE} />
                       </View>
-                    ))}
+                      <Text style={styles.jobDetailReqTitle}>Benefits</Text>
+                    </View>
+                    <View style={styles.jobDetailBenefitsGrid}>
+                      {job.benefits.map((benefit) => (
+                        <View key={benefit} style={styles.jobDetailBenefit}>
+                          <Ionicons name="checkmark-circle-outline" size={18} color={BLUE} />
+                          <Text style={styles.jobDetailBenefitText}>{benefit}</Text>
+                        </View>
+                      ))}
+                    </View>
                   </View>
-                </View>
+                )}
 
                 <View style={styles.jobDetailRequirements}>
                   <View style={styles.jobDetailReqHeader}>
@@ -934,6 +934,8 @@ const styles = StyleSheet.create({
   jobDetailSection: { marginTop: 4 },
   jobDetailSectionTitle: { color: '#090D1C', fontSize: 19, fontWeight: '900' },
   jobDetailParagraph: { color: '#111827', fontSize: 15, lineHeight: 24 },
+  jobDetailParagraphItem: { color: '#111827', fontSize: 15, lineHeight: 24, marginBottom: 12 },
+  jobDetailAdSlot: { marginHorizontal: 0, marginTop: 18, marginBottom: 8 },
   jobDetailSponsor: {
     marginTop: 20,
     borderWidth: 1,
