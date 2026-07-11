@@ -69,7 +69,7 @@ function getFolder(asset) {
 }
 
 function getAssetKey(asset = {}) {
-  return asset.id || asset.uri || asset.localUri || asset.filename
+  return String(asset.id || asset.uri || asset.localUri || asset.filename || 'unknown-media')
 }
 
 function groupAssets(items, getKey) {
@@ -254,7 +254,7 @@ function SongArtwork({ theme, active = false, size = 54 }) {
 
 function SongRow({ theme, item, index, selected, favorite, onPress }) {
   const c = theme.colors
-  const active = selected?.id === item.id
+  const active = selected && getAssetKey(selected) === getAssetKey(item)
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -777,10 +777,9 @@ export default function MusicExperience({ theme, music, loading, loadMore, hasMo
     toggleShuffle,
     cycleRepeat,
   } = useDeviceMediaStore()
-  const player = useVideoPlayer(undefined, (player) => {
-    player.staysActiveInBackground = true
-    player.showNowPlayingNotification = true
-    player.audioMixingMode = 'auto'
+  const player = useVideoPlayer(null, (musicPlayer) => {
+    try { musicPlayer.audioMixingMode = 'auto' } catch {}
+    try { musicPlayer.timeUpdateEventInterval = 1 } catch {}
   })
 
   const visibleSongs = useMemo(() => (
@@ -789,7 +788,8 @@ export default function MusicExperience({ theme, music, loading, loadMore, hasMo
 
   const searchResults = useMemo(() => sortAssets(searchAssets(music, query), sortMode), [music, query, sortMode])
   const musicRows = useMemo(() => buildMusicRows(music), [music])
-  const selectedIndex = selected ? visibleSongs.findIndex((item) => item.id === selected.id) : -1
+  const selectedKey = selected ? getAssetKey(selected) : ''
+  const selectedIndex = selectedKey ? visibleSongs.findIndex((item) => getAssetKey(item) === selectedKey) : -1
 
   const openSong = (asset) => {
     if (!asset) return
@@ -802,16 +802,22 @@ export default function MusicExperience({ theme, music, loading, loadMore, hasMo
   useEffect(() => {
     if (!selected || !selectedUri) return
     try {
-      player.staysActiveInBackground = true
-      player.showNowPlayingNotification = true
-      player.audioMixingMode = 'auto'
+      try { player.audioMixingMode = 'auto' } catch {}
       player.replace(getSourceForUri(selectedUri, selected.filename))
       player.play()
       setPlaying(true)
       addHistory(selected, 'audio')
       setMusicQueue(visibleSongs.length ? visibleSongs : music)
-    } catch {}
-  }, [selectedUri, selected?.id])
+    } catch (error) {
+      console.warn('Device music playback failed:', error?.message || error)
+      setPlaying(false)
+    }
+  }, [selectedUri, selectedKey])
+
+  useEffect(() => () => {
+    try { player.pause() } catch {}
+    try { player.replace(null) } catch {}
+  }, [player])
 
   useEffect(() => {
     const timer = setInterval(() => {
