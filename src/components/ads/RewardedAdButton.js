@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { ActivityIndicator, Alert, Text, TouchableOpacity } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import useThemeStore from '../../stores/themeStore'
-import { areAdsEnabled, areRewardedInterstitialsEnabled, areSsvRewardsEnabled, getAdUnit } from './adUnits'
+import { areAdsEnabled, areRewardedInterstitialsEnabled, areSsvRewardsEnabled, getAdUnit, shouldUseTestAds } from './adUnits'
 import { getMobileAdsModule } from './mobileAds'
 import useAuthStore from '../../services/authStore.native'
 
@@ -27,10 +27,11 @@ export default function RewardedAdButton({
     if (!AdClass) return null
     const unitId = getAdUnit(useRewardedInterstitial ? 'RewardedInterstitial' : 'Rewarded')
     if (!unitId) return null
+    const useServerSideVerification = areSsvRewardsEnabled() && !shouldUseTestAds()
     try {
       return AdClass.createForAdRequest(unitId, {
         requestNonPersonalizedAdsOnly: true,
-        serverSideVerificationOptions: userId ? {
+        serverSideVerificationOptions: useServerSideVerification && userId ? {
           userId: String(userId),
           customData: useRewardedInterstitial ? 'nendplay_rewarded_interstitial_ad' : 'nendplay_rewarded_ad',
         } : undefined,
@@ -56,7 +57,8 @@ export default function RewardedAdButton({
       rewardedAd.load()
     })
     const unsubscribeReward = rewardedAd.addAdEventListener(ads.RewardedAdEventType.EARNED_REWARD, (reward) => {
-      if (!areSsvRewardsEnabled()) onReward?.(reward)
+      const shouldGrantClientReward = shouldUseTestAds() || !areSsvRewardsEnabled()
+      if (shouldGrantClientReward) onReward?.(reward)
     })
 
     rewardedAd.load()

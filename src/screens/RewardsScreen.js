@@ -120,7 +120,7 @@ export default function RewardsScreen({ navigation }) {
   const [verifyingPayment, setVerifyingPayment] = useState(false)
 
   const coins = status?.coins ?? user?.rewardCoins ?? 0
-  const pricePerDay = status?.paidAdFree?.pricePerDayNaira || 99
+  const pricePerDay = status?.paidAdFree?.pricePerDayNaira || 33.3
   const paidTotal = paidDays * pricePerDay
   const rewards = status?.rewards?.length ? status.rewards : DEFAULT_REWARDS
   const adFreeRewards = rewards.filter((item) => item.kind === 'ad_free')
