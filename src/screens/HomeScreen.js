@@ -754,7 +754,13 @@ export default function HomeScreen({ navigation }) {
       else navigation.navigate('Shorts', { openId: item._id })
       return
     }
-    navigation.navigate('MediaPlayer', { mediaId: item._id })
+    navigation.navigate('MediaPlayer', {
+      mediaId: item._id,
+      media: item,
+      playbackUrl: mediaService.resolveStreamUrl(
+        item.streamUrl || item.playbackUrl || item.mediaUrl || item.fileUrl || mediaService.getStreamUrl(item._id)
+      ),
+    })
   }
 
   const handleNewsHighlightPress = (article) => {

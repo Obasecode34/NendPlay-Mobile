@@ -47,14 +47,21 @@ function getMediaLabels(item = {}) {
   ].filter(Boolean).flatMap((value) => String(value).split(',')).map(normalizeLabel).filter(Boolean)
 }
 
+function getImmediatePlaybackUrl(item, id) {
+  const candidate = item?.streamUrl || item?.playbackUrl || item?.mediaUrl || item?.fileUrl || ''
+  if (candidate) return mediaService.resolveStreamUrl(candidate)
+  return id ? mediaService.getStreamUrl(id) : ''
+}
+
 export default function MediaPlayerScreen({ route, navigation }) {
-  const { mediaId, localUri, offlineMedia } = route.params
+  const { mediaId, localUri, offlineMedia, media: routeMedia, playbackUrl: routePlaybackUrl } = route.params
   const { theme } = useThemeStore()
   const { user, isAuthenticated } = useAuthStore()
   const insets = useSafeAreaInsets()
   const c = theme.colors
-  const [playbackUrl, setPlaybackUrl] = useState('')
-  const [playbackSourceType, setPlaybackSourceType] = useState('auto')
+  const initialPlaybackUrl = routePlaybackUrl || getImmediatePlaybackUrl(routeMedia, mediaId)
+  const [playbackUrl, setPlaybackUrl] = useState(initialPlaybackUrl)
+  const [playbackSourceType, setPlaybackSourceType] = useState(initialPlaybackUrl?.includes('.m3u8') ? 'hls' : 'auto')
   const [playbackError, setPlaybackError] = useState('')
   const streamUrl = localUri || playbackUrl || mediaService.getStreamUrl(mediaId)
   const streamSource = useMemo(() => ({
@@ -65,9 +72,9 @@ export default function MediaPlayerScreen({ route, navigation }) {
     player.play()
   })
 
-  const [media, setMedia] = useState(null)
-  const [collectionItems, setCollectionItems] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [media, setMedia] = useState(routeMedia || null)
+  const [collectionItems, setCollectionItems] = useState(routeMedia ? [routeMedia] : [])
+  const [loading, setLoading] = useState(!routeMedia && !localUri)
   const [locked, setLocked] = useState(false)
   const [liked, setLiked] = useState(false)
   const [controlsVisible, setControlsVisible] = useState(true)
@@ -108,6 +115,14 @@ export default function MediaPlayerScreen({ route, navigation }) {
       player.play()
     } catch {}
   }, [playbackUrl, playbackSourceType, localUri])
+
+  useEffect(() => {
+    if (locked || playbackError || !streamUrl) return
+    try {
+      player.play()
+      setPlaying(true)
+    } catch {}
+  }, [streamUrl, locked, playbackError, player])
 
   useEffect(() => {
     historyRecordedRef.current = false
@@ -166,7 +181,8 @@ export default function MediaPlayerScreen({ route, navigation }) {
   }, [player, playbackSpeed])
 
   const fetchMedia = async () => {
-    setLoading(true)
+    const hasSeedMedia = Boolean(routeMedia)
+    setLoading(!hasSeedMedia)
     try {
       const res = await mediaService.getById(mediaId)
       const currentMedia = res.data.data.media
@@ -207,8 +223,10 @@ export default function MediaPlayerScreen({ route, navigation }) {
         setPlaybackUrl(resolvedUrl)
       }
     } catch {
-      Alert.alert('Error', 'Media not found')
-      navigation.goBack()
+      if (!hasSeedMedia) {
+        Alert.alert('Error', 'Media not found')
+        navigation.goBack()
+      }
     } finally { setLoading(false) }
   }
 
