@@ -60,6 +60,12 @@ function TopicPill({ icon, label, onPress }) {
   )
 }
 
+function getImmediateShortUrl(item) {
+  const candidate = item?.streamUrl || item?.playbackUrl || item?.mediaUrl || item?.fileUrl || ''
+  if (candidate) return mediaService.resolveStreamUrl(candidate)
+  return item?._id ? mediaService.getStreamUrl(item._id) : ''
+}
+
 function ShortsAdItem({ itemHeight, isActive, onEnded, adType = 'nendplay' }) {
   useEffect(() => {
     if (!isActive) return undefined
@@ -103,8 +109,13 @@ function ShortItem({ item, isActive, theme, itemHeight, onPausedChange, onEnded 
   const [loadingComments, setLoadingComments] = useState(false)
   const [progress, setProgress] = useState(0)
 
-  const player = useVideoPlayer({ uri: mediaService.getStreamUrl(item._id) }, (player) => {
+  const initialUrl = getImmediateShortUrl(item)
+  const player = useVideoPlayer({
+    uri: initialUrl,
+    contentType: initialUrl.includes('.m3u8') ? 'hls' : 'auto',
+  }, (player) => {
     player.loop = false
+    if (isActive && !isPaused) player.play()
   })
 
   useEffect(() => {
@@ -115,6 +126,10 @@ function ShortItem({ item, isActive, theme, itemHeight, onPausedChange, onEnded 
         const playback = res.data.data.playback
         const resolvedUrl = mediaService.resolveStreamUrl(playback.streamUrl)
         if (cancelled || !resolvedUrl) return
+        if (resolvedUrl === initialUrl) {
+          if (isActive && !isPaused) player.play()
+          return
+        }
         player.replace({
           uri: resolvedUrl,
           contentType: playback.sourceType === 'hls' || resolvedUrl.includes('.m3u8') ? 'hls' : 'auto',
@@ -124,7 +139,7 @@ function ShortItem({ item, isActive, theme, itemHeight, onPausedChange, onEnded 
     }
     loadPlayback()
     return () => { cancelled = true }
-  }, [item._id, player])
+  }, [item._id, initialUrl, isActive, isPaused, player])
 
   useEffect(() => {
     if (isActive && !isPaused) {
@@ -452,6 +467,23 @@ export default function ShortsScreen({ route }) {
   const headerHeight = insets.top + 64
   const itemHeight = Math.max(screenHeight - headerHeight, 1)
 
+  useEffect(() => {
+    let cancelled = false
+    const loadOpenedShortFirst = async () => {
+      if (!openId || page !== 1 || feedMode !== 'all') return
+      try {
+        const res = await mediaService.getById(openId)
+        const fetched = res.data.data.media
+        if (cancelled || !fetched) return
+        setShorts((prev) => [fetched, ...prev.filter((short) => short._id !== fetched._id)])
+        setActiveIndex(0)
+        setLoading(false)
+      } catch {}
+    }
+    loadOpenedShortFirst()
+    return () => { cancelled = true }
+  }, [openId, page, feedMode])
+
   useEffect(() => { fetchShorts() }, [page, feedMode])
 
   const fetchShorts = async () => {
@@ -463,7 +495,17 @@ export default function ShortsScreen({ route }) {
         : mediaService.getShorts
       const res = await serviceCall({ page, limit: 10 })
       const { media, pagination } = res.data.data
-      setShorts(prev => page === 1 ? media : [...prev, ...media])
+      setShorts(prev => {
+        const nextMedia = Array.isArray(media) ? media : []
+        if (page === 1) {
+          const merged = openId
+            ? [...prev.filter((short) => short._id === openId), ...nextMedia.filter((short) => short._id !== openId)]
+            : nextMedia
+          return merged
+        }
+        const seen = new Set(prev.map((short) => short._id))
+        return [...prev, ...nextMedia.filter((short) => !seen.has(short._id))]
+      })
       setHasMore(page < pagination.pages)
     } catch {} finally {
       setLoading(false)
