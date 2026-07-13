@@ -55,15 +55,15 @@ const FEATURE_CARDS = [
 ]
 
 function getArtist(asset) {
-  return asset.artist || asset.author || 'Unknown Artist'
+  return String(asset?.artist || asset?.author || 'Unknown Artist')
 }
 
 function getAlbum(asset) {
-  return asset.albumTitle || asset.album || 'Unknown Album'
+  return String(asset?.albumTitle || asset?.album || 'Unknown Album')
 }
 
 function getFolder(asset) {
-  const uri = asset.localUri || asset.uri || ''
+  const uri = String(asset?.localUri || asset?.uri || '')
   const parts = uri.split('/').filter(Boolean)
   return parts.length > 1 ? parts[parts.length - 2] : 'Device Music'
 }
@@ -368,19 +368,20 @@ function MyMusic({ theme, music, visibleSongs, localTab, setLocalTab, sortMode, 
   const c = theme.colors
   const [openedGroup, setOpenedGroup] = useState(null)
   const [quickMode, setQuickMode] = useState(null)
-  const artists = useMemo(() => groupAssets(music, getArtist), [music])
-  const albums = useMemo(() => groupAssets(music, getAlbum), [music])
-  const folders = useMemo(() => groupAssets(music, getFolder), [music])
-  const favoriteSongs = useMemo(() => music.filter((item) => favorites[getAssetKey(item)]), [music, favorites])
+  const sourceMusic = useMemo(() => (Array.isArray(music) ? music.filter(Boolean) : []), [music])
+  const artists = useMemo(() => groupAssets(sourceMusic, getArtist), [sourceMusic])
+  const albums = useMemo(() => groupAssets(sourceMusic, getAlbum), [sourceMusic])
+  const folders = useMemo(() => groupAssets(sourceMusic, getFolder), [sourceMusic])
+  const favoriteSongs = useMemo(() => sourceMusic.filter((item) => favorites[getAssetKey(item)]), [sourceMusic, favorites])
   const recentlyPlayedSongs = useMemo(() => {
     const audioHistory = history.filter((item) => item.mediaType === 'audio')
     return audioHistory
-      .map((entry) => music.find((item) => getAssetKey(item) === entry.id || item.uri === entry.uri))
+      .map((entry) => sourceMusic.find((item) => getAssetKey(item) === entry.id || item.uri === entry.uri))
       .filter(Boolean)
-  }, [history, music])
-  const recentlyAddedSongs = useMemo(() => sortAssets(music, 'recent'), [music])
+  }, [history, sourceMusic])
+  const recentlyAddedSongs = useMemo(() => sortAssets(sourceMusic, 'recent'), [sourceMusic])
   const cards = [
-    { label: 'Songs', value: music.length, icon: 'musical-note', tab: 'songs' },
+    { label: 'Songs', value: sourceMusic.length, icon: 'musical-note', tab: 'songs' },
     { label: 'Artists', value: artists.length, icon: 'person', tab: 'artists' },
     { label: 'Albums', value: albums.length, icon: 'disc', tab: 'albums' },
     { label: 'Folders', value: folders.length, icon: 'folder', tab: 'folders' },
@@ -488,10 +489,10 @@ function MyMusic({ theme, music, visibleSongs, localTab, setLocalTab, sortMode, 
                     setOpenedGroup({
                       id: 'playlists',
                       title: 'Playlists',
-                      count: music.length,
+                      count: sourceMusic.length,
                       items: playlists.length
-                        ? music.filter((item) => playlists.some((playlist) => playlist.assets?.includes(getAssetKey(item))))
-                        : music,
+                        ? sourceMusic.filter((item) => playlists.some((playlist) => playlist.assets?.includes(getAssetKey(item))))
+                        : sourceMusic,
                     })
                     return
                   }
@@ -754,6 +755,7 @@ function FullPlayerModalContent({ theme, selected, playing, position, duration, 
 
 export default function MusicExperience({ theme, music, loading, loadMore, hasMore }) {
   const c = theme.colors
+  const safeMusic = useMemo(() => (Array.isArray(music) ? music.filter(Boolean) : []), [music])
   const [query, setQuery] = useState('')
   const [sortMode, setSortMode] = useState('recent')
   const [mainSection, setMainSection] = useState('home')
@@ -783,17 +785,17 @@ export default function MusicExperience({ theme, music, loading, loadMore, hasMo
   })
 
   const visibleSongs = useMemo(() => (
-    sortAssets(searchAssets(music, mainSection === 'search' ? query : ''), sortMode)
-  ), [music, query, sortMode, mainSection])
+    sortAssets(searchAssets(safeMusic, mainSection === 'search' ? query : ''), sortMode)
+  ), [safeMusic, query, sortMode, mainSection])
 
-  const searchResults = useMemo(() => sortAssets(searchAssets(music, query), sortMode), [music, query, sortMode])
-  const musicRows = useMemo(() => buildMusicRows(music), [music])
+  const searchResults = useMemo(() => sortAssets(searchAssets(safeMusic, query), sortMode), [safeMusic, query, sortMode])
+  const musicRows = useMemo(() => buildMusicRows(safeMusic), [safeMusic])
   const selectedKey = selected ? getAssetKey(selected) : ''
   const selectedIndex = selectedKey ? visibleSongs.findIndex((item) => getAssetKey(item) === selectedKey) : -1
 
   const openSong = (asset) => {
     if (!asset) return
-    const uri = asset.localUri || asset.uri
+    const uri = String(asset.localUri || asset.uri || '')
     if (!uri) return
     setSelected(asset)
     setSelectedUri(uri)
@@ -807,12 +809,12 @@ export default function MusicExperience({ theme, music, loading, loadMore, hasMo
       player.play()
       setPlaying(true)
       addHistory(selected, 'audio')
-      setMusicQueue(visibleSongs.length ? visibleSongs : music)
+      setMusicQueue(visibleSongs.length ? visibleSongs : safeMusic)
     } catch (error) {
       console.warn('Device music playback failed:', error?.message || error)
       setPlaying(false)
     }
-  }, [selectedUri, selectedKey])
+  }, [selectedUri, selectedKey, safeMusic, visibleSongs])
 
   useEffect(() => () => {
     try { player.pause() } catch {}
@@ -838,7 +840,7 @@ export default function MusicExperience({ theme, music, loading, loadMore, hasMo
       } catch {}
     }, 700)
     return () => clearInterval(timer)
-  }, [player, selected?.id, repeatMode, visibleSongs.length, music.length])
+  }, [player, selected?.id, repeatMode, visibleSongs.length, safeMusic.length])
 
   const togglePlayback = (forced) => {
     try {
@@ -856,7 +858,7 @@ export default function MusicExperience({ theme, music, loading, loadMore, hasMo
   }
 
   const playNext = () => {
-    const queue = visibleSongs.length ? visibleSongs : music
+    const queue = visibleSongs.length ? visibleSongs : safeMusic
     if (!queue.length) return
     if (repeatMode === 'one' && selected) {
       openSong(selected)
@@ -870,7 +872,7 @@ export default function MusicExperience({ theme, music, loading, loadMore, hasMo
   }
 
   const playPrev = () => {
-    const queue = visibleSongs.length ? visibleSongs : music
+    const queue = visibleSongs.length ? visibleSongs : safeMusic
     if (!queue.length) return
     openSong(queue[selectedIndex > 0 ? selectedIndex - 1 : queue.length - 1])
   }

@@ -222,9 +222,11 @@ function ShortItem({ item, isActive, theme, itemHeight, onPausedChange, onEnded 
         return
       }
 
-      const fileUrl = res.data.data.fileUrl || item.mediaUrl || item.fileUrl || mediaService.getStreamUrl(item._id)
+      const rawFileUrl = res.data.data.fileUrl || item.mediaUrl || item.fileUrl || mediaService.getStreamUrl(item._id)
+      const fileUrl = mediaService.resolveStreamUrl(rawFileUrl)
       const normalizedFileUrl = String(fileUrl || '').toLowerCase()
       const forceHls = Boolean(
+        res.data.data.sourceType === 'hls' ||
         normalizedFileUrl.includes('.m3u8') ||
         normalizedFileUrl.includes('/hls') ||
         String(item.mimeType || res.data.data.mimeType || '').toLowerCase().includes('mpegurl')

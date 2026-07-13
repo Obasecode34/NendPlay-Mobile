@@ -7,10 +7,9 @@ import {
 import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNavigation } from '@react-navigation/native'
-import * as Device from 'expo-device'
 import useThemeStore from '../stores/themeStore'
 import useAuthStore from '../services/authStore.native'
-import { downloadService } from '../services/index'
+import { downloadService, mediaService } from '../services/index'
 import { deleteLocalDownload, getLocalDownloads, getReadableUri, removeLocalDownloadRecord } from '../services/localDownloadStore'
 import AdBanner from '../components/ads/AdBanner'
 import NativeAdvancedAd from '../components/ads/NativeAdvancedAd'
@@ -47,8 +46,6 @@ export default function DownloadsScreen({ embedded = false, contentType, navigat
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
-
-  const deviceId = Device.osInternalBuildId || 'mobile-device'
 
   useEffect(() => {
     fetchAll()
@@ -111,7 +108,7 @@ export default function DownloadsScreen({ embedded = false, contentType, navigat
       return
     }
     try {
-      const params = { deviceId, page: pageToLoad, limit: DOWNLOAD_PAGE_LIMIT }
+      const params = { page: pageToLoad, limit: DOWNLOAD_PAGE_LIMIT }
       if (contentType) params.contentType = contentType
       const [dlRes, devRes] = await Promise.all([
         downloadService.getAll(params),
@@ -164,7 +161,8 @@ export default function DownloadsScreen({ embedded = false, contentType, navigat
 
   const handleOpen = async (item) => {
     const localUri = await getReadableUri(item.storageKey)
-    const url = localUri || item.contentSnapshot?.fileUrl
+    const remoteUrl = mediaService.resolveStreamUrl(item.contentSnapshot?.fileUrl || '')
+    const url = localUri || remoteUrl
     if (!url) {
       Alert.alert('Open download', 'This downloaded item does not have a readable file link.')
       return
@@ -172,7 +170,8 @@ export default function DownloadsScreen({ embedded = false, contentType, navigat
     if (item.contentType === 'media') {
       nav?.navigate('MediaPlayer', {
         mediaId: item.contentId,
-        localUri: url,
+        localUri: localUri || undefined,
+        playbackUrl: localUri ? undefined : url,
         offlineMedia: item.contentSnapshot,
       })
       return
@@ -185,6 +184,7 @@ export default function DownloadsScreen({ embedded = false, contentType, navigat
           id: item.contentId,
           storageKey: url,
           localUri: url,
+          fileUrl: url,
         },
       })
       return

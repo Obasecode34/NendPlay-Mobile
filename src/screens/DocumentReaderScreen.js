@@ -26,6 +26,7 @@ export default function DocumentReaderScreen({ route, navigation }) {
   const mimeType = document.mimeType || ''
   const extension = getExtension(localUri || title)
   const isText = ['txt', 'csv', 'md', 'json'].includes(extension) || mimeType.startsWith('text/')
+  const isLocalFile = String(localUri || '').startsWith(FileSystem.documentDirectory)
 
   useEffect(() => {
     loadDocument()
@@ -36,18 +37,23 @@ export default function DocumentReaderScreen({ route, navigation }) {
     setError('')
     try {
       if (!localUri) throw new Error('No readable document file was found.')
-      const info = await FileSystem.getInfoAsync(localUri)
-      if (!info.exists && localUri.startsWith(FileSystem.documentDirectory)) {
+      const info = isLocalFile ? await FileSystem.getInfoAsync(localUri) : { exists: true }
+      if (!info.exists && isLocalFile) {
         throw new Error('This offline document file is missing from the device.')
       }
 
       if (isText) {
-        const text = await FileSystem.readAsStringAsync(localUri)
+        const text = isLocalFile
+          ? await FileSystem.readAsStringAsync(localUri)
+          : await fetch(localUri).then((res) => {
+              if (!res.ok) throw new Error(`Document request failed with status ${res.status}.`)
+              return res.text()
+            })
         setPlainText(text)
         return
       }
 
-      const base64 = localUri.startsWith(FileSystem.documentDirectory)
+      const base64 = isLocalFile
         ? await FileSystem.readAsStringAsync(localUri, { encoding: FileSystem.EncodingType.Base64 })
         : ''
       const source = base64

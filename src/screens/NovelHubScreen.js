@@ -12,7 +12,7 @@ import * as ImagePicker from 'expo-image-picker'
 import * as Device from 'expo-device'
 import useThemeStore from '../stores/themeStore'
 import useAuthStore from '../services/authStore.native'
-import { downloadService, novelService } from '../services/index'
+import { downloadService, mediaService, novelService } from '../services/index'
 import { saveDownloadFile, upsertLocalDownloadRecord } from '../services/localDownloadStore'
 import DownloadsScreen from './DownloadsScreen'
 import DeviceOfficeScreen from '../features/novelDevice/DeviceOfficeScreen'
@@ -360,7 +360,8 @@ export default function NovelHubScreen() {
         setSelectedPdf(null)
         return
       }
-      const fileUrl = res.data.data.fileUrl || item.fileUrl
+      const rawFileUrl = res.data.data.fileUrl || item.fileUrl
+      const fileUrl = mediaService.resolveStreamUrl(rawFileUrl)
       const savedFile = await saveDownloadFile({
         fileUrl,
         contentType: 'document',

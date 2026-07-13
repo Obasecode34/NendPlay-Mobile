@@ -31,7 +31,8 @@ export const MUSIC_SECTIONS = [
 ]
 
 export function cleanTitle(filename = '') {
-  return filename.replace(/\.[^/.]+$/, '').replace(/[_-]+/g, ' ').trim() || filename
+  const value = String(filename || '')
+  return value.replace(/\.[^/.]+$/, '').replace(/[_-]+/g, ' ').trim() || value || 'Unknown media'
 }
 
 export function formatDuration(seconds = 0) {
@@ -51,7 +52,8 @@ export function formatSize(bytes = 0) {
 }
 
 export function getAssetSize(asset) {
-  return asset.fileSize || asset.mediaSubtypes?.fileSize || 0
+  if (!asset) return 0
+  return Number(asset.fileSize || asset.mediaSubtypes?.fileSize || 0) || 0
 }
 
 export function getSourceForUri(uri, title = '') {
@@ -66,6 +68,7 @@ export function getSourceForUri(uri, title = '') {
 }
 
 export function getVideoBucket(asset) {
+  if (!asset) return 'recent'
   const text = `${asset.filename || ''}`.toLowerCase()
   if (text.includes('download') || text.includes('/download')) return 'downloads'
   if (text.includes('s0') || text.includes('season') || text.includes('episode') || text.includes('e0')) return 'series'
@@ -74,13 +77,14 @@ export function getVideoBucket(asset) {
 }
 
 export function filterVideoAssets(items, filter) {
-  if (!filter || filter === 'all') return items
-  if (filter === 'folders') return items
-  return items.filter((item) => getVideoBucket(item) === filter)
+  const safeItems = Array.isArray(items) ? items.filter(Boolean) : []
+  if (!filter || filter === 'all') return safeItems
+  if (filter === 'folders') return safeItems
+  return safeItems.filter((item) => getVideoBucket(item) === filter)
 }
 
 export function sortAssets(items, mode) {
-  const sorted = [...items]
+  const sorted = (Array.isArray(items) ? items : []).filter(Boolean)
   if (mode === 'name') {
     sorted.sort((a, b) => cleanTitle(a.filename).localeCompare(cleanTitle(b.filename)))
   } else if (mode === 'duration') {
@@ -119,23 +123,25 @@ function searchableAssetText(item = {}) {
 }
 
 export function searchAssets(items, query) {
-  const terms = query
+  const terms = String(query || '')
     .trim()
     .toLowerCase()
     .split(/\s+/)
     .filter(Boolean)
-  if (!terms.length) return items
-  return items.filter((item) => {
+  const safeItems = Array.isArray(items) ? items.filter(Boolean) : []
+  if (!terms.length) return safeItems
+  return safeItems.filter((item) => {
     const haystack = searchableAssetText(item)
     return terms.every((term) => haystack.includes(term))
   })
 }
 
 export function buildMusicRows(items) {
-  const fallback = items.slice(0, 12)
+  const safeItems = Array.isArray(items) ? items.filter(Boolean) : []
+  const fallback = safeItems.slice(0, 12)
   return MUSIC_SECTIONS.map((section) => {
     const sectionItems = section.terms.length
-      ? items.filter((item) => section.terms.some((term) => cleanTitle(item.filename).toLowerCase().includes(term)))
+      ? safeItems.filter((item) => section.terms.some((term) => cleanTitle(item.filename).toLowerCase().includes(term)))
       : fallback
     return { ...section, items: sectionItems.length ? sectionItems.slice(0, 12) : fallback }
   }).filter((section) => section.items.length)
