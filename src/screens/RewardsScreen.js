@@ -24,13 +24,13 @@ const GOLD = '#F5C542'
 const GOLD_DARK = '#7A5A00'
 
 const DEFAULT_REWARDS = [
-  { id: 'adfree_1d', label: 'Ad-free for 1 day', coins: 5, kind: 'ad_free', days: 1 },
-  { id: 'adfree_7d', label: 'Ad-free for 7 days', coins: 15, kind: 'ad_free', days: 7 },
-  { id: 'adfree_30d', label: 'Ad-free for 30 days', coins: 45, kind: 'ad_free', days: 30 },
-  { id: 'plan_mobile', label: 'Mobile plan', coins: 50, kind: 'plan', plan: 'mobile', days: 30 },
-  { id: 'plan_basic', label: 'Basic plan', coins: 60, kind: 'plan', plan: 'basic', days: 30 },
-  { id: 'plan_standard', label: 'Standard plan', coins: 70, kind: 'plan', plan: 'standard', days: 30 },
-  { id: 'plan_premium', label: 'Premium plan', coins: 80, kind: 'plan', plan: 'premium', days: 30 },
+  { id: 'adfree_1d', label: 'Ad-free for 1 day', coins: 100, kind: 'ad_free', days: 1 },
+  { id: 'adfree_7d', label: 'Ad-free for 7 days', coins: 500, kind: 'ad_free', days: 7 },
+  { id: 'adfree_30d', label: 'Ad-free for 30 days', coins: 1500, kind: 'ad_free', days: 30 },
+  { id: 'plan_mobile', label: 'Mobile plan', coins: 2000, kind: 'plan', plan: 'mobile', days: 30 },
+  { id: 'plan_basic', label: 'Basic plan', coins: 3000, kind: 'plan', plan: 'basic', days: 30 },
+  { id: 'plan_standard', label: 'Standard plan', coins: 4000, kind: 'plan', plan: 'standard', days: 30 },
+  { id: 'plan_premium', label: 'Premium plan', coins: 5000, kind: 'plan', plan: 'premium', days: 30 },
 ]
 
 const EARN_TASKS = [
@@ -395,7 +395,7 @@ export default function RewardsScreen({ navigation }) {
             <View style={styles.benefitRow}>
               {[
                 ['ban-outline', 'No ads'],
-                ['phone-portrait-outline', 'Mobile access'],
+                ['videocam-outline', 'HD High quality'],
                 ['download-outline', 'Downloads'],
               ].map(([icon, label]) => (
                 <View key={label} style={styles.benefitItem}>
