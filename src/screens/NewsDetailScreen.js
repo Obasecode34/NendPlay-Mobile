@@ -325,6 +325,17 @@ export default function NewsDetailScreen({ route, navigation }) {
     }
   }
 
+  const handleBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack()
+      return
+    }
+    navigation.navigate('MainTabs', {
+      screen: 'Home',
+      params: { screen: 'DailyNews' },
+    })
+  }
+
   if (loading || !post) {
     return (
       <View style={styles.loading}>
@@ -362,7 +373,7 @@ export default function NewsDetailScreen({ route, navigation }) {
           ListHeaderComponent={(
             <View>
               <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
+                <TouchableOpacity onPress={handleBack} style={styles.headerButton}>
                   <Ionicons name="chevron-back" size={27} color="#090D1C" />
                 </TouchableOpacity>
                 <Text style={styles.headerBrand}><Text style={styles.headerBrandAccent}>NendPlay</Text> Career</Text>
@@ -442,7 +453,10 @@ export default function NewsDetailScreen({ route, navigation }) {
                     <Text style={styles.jobDetailReqTitle}>Responsibilities</Text>
                   </View>
                   {job.responsibilities.map((responsibility, index) => (
-                    <Text key={`${responsibility}-${index}`} style={styles.jobDetailParagraphItem}>{responsibility}</Text>
+                    <View key={`${responsibility}-${index}`} style={styles.jobDetailBulletRow}>
+                      <View style={styles.jobDetailBullet} />
+                      <Text style={styles.jobDetailParagraphItem}>{responsibility}</Text>
+                    </View>
                   ))}
                 </View>
 
@@ -456,7 +470,10 @@ export default function NewsDetailScreen({ route, navigation }) {
                     <Text style={styles.jobDetailReqTitle}>Requirements</Text>
                   </View>
                   {job.requirements.map((requirement, index) => (
-                    <Text key={`${requirement}-${index}`} style={styles.jobDetailParagraphItem}>{requirement}</Text>
+                    <View key={`${requirement}-${index}`} style={styles.jobDetailBulletRow}>
+                      <View style={styles.jobDetailBullet} />
+                      <Text style={styles.jobDetailParagraphItem}>{requirement}</Text>
+                    </View>
                   ))}
                 </View>
 
@@ -572,7 +589,7 @@ export default function NewsDetailScreen({ route, navigation }) {
         ListHeaderComponent={(
           <View>
             <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-              <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
+              <TouchableOpacity onPress={handleBack} style={styles.headerButton}>
                 <Ionicons name="chevron-back" size={27} color="#090D1C" />
               </TouchableOpacity>
               <Text style={styles.headerBrand}><Text style={styles.headerBrandAccent}>NendPlay</Text> News</Text>
@@ -934,7 +951,15 @@ const styles = StyleSheet.create({
   jobDetailSection: { marginTop: 4 },
   jobDetailSectionTitle: { color: '#090D1C', fontSize: 19, fontWeight: '900' },
   jobDetailParagraph: { color: '#111827', fontSize: 15, lineHeight: 24 },
-  jobDetailParagraphItem: { color: '#111827', fontSize: 15, lineHeight: 24, marginBottom: 12 },
+  jobDetailBulletRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 12 },
+  jobDetailBullet: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: BLUE,
+    marginTop: 9,
+  },
+  jobDetailParagraphItem: { flex: 1, color: '#111827', fontSize: 15, lineHeight: 24 },
   jobDetailAdSlot: { marginHorizontal: 0, marginTop: 18, marginBottom: 8 },
   jobDetailSponsor: {
     marginTop: 20,
