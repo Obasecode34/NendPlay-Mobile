@@ -137,6 +137,7 @@ export const rewardService = {
   getStatus: () => api.get('/rewards/status'),
   earnFromAd: (data) => api.post('/rewards/ad-earned', data),
   redeem: (data) => api.post('/rewards/redeem', data),
+  withdraw: (data) => api.post('/rewards/withdraw', data),
   initializePaidAdFree: (data) => api.post('/rewards/ad-free/initialize', data),
   verifyPaidAdFree: (data) => api.post('/rewards/ad-free/verify', data),
 }

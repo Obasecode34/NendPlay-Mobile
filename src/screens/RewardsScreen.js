@@ -7,6 +7,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native'
@@ -118,10 +119,23 @@ export default function RewardsScreen({ navigation }) {
   const [paymentRef, setPaymentRef] = useState(null)
   const [paying, setPaying] = useState(false)
   const [verifyingPayment, setVerifyingPayment] = useState(false)
+  const [withdrawCoins, setWithdrawCoins] = useState('3000')
+  const [bankName, setBankName] = useState('')
+  const [accountNumber, setAccountNumber] = useState('')
+  const [accountName, setAccountName] = useState('')
+  const [withdrawing, setWithdrawing] = useState(false)
 
   const coins = status?.coins ?? user?.rewardCoins ?? 0
   const pricePerDay = status?.paidAdFree?.pricePerDayNaira || 33.3
   const paidTotal = paidDays * pricePerDay
+  const withdrawalPolicy = status?.withdrawalPolicy || {
+    coinsPerNaira: 3,
+    minimumCoins: 3000,
+    minimumNaira: 1000,
+    verifiedAccountRequired: true,
+  }
+  const withdrawalCoinAmount = Number(withdrawCoins || 0)
+  const withdrawalNairaAmount = withdrawalCoinAmount / withdrawalPolicy.coinsPerNaira
   const rewards = status?.rewards?.length ? status.rewards : DEFAULT_REWARDS
   const adFreeRewards = rewards.filter((item) => item.kind === 'ad_free')
   const planRewards = rewards.filter((item) => item.kind === 'plan')
@@ -255,6 +269,41 @@ export default function RewardsScreen({ navigation }) {
     }
   }
 
+  const handleWithdrawal = () => {
+    Alert.alert(
+      'Request withdrawal',
+      `Convert ${withdrawalCoinAmount.toLocaleString()} coins to N${withdrawalNairaAmount.toLocaleString()}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Submit',
+          onPress: async () => {
+            setWithdrawing(true)
+            try {
+              const res = await rewardService.withdraw({
+                coins: withdrawalCoinAmount,
+                bankName,
+                accountNumber,
+                accountName,
+              })
+              const nextStatus = res.data.data
+              setStatus(nextStatus)
+              syncUserFromStatus(nextStatus)
+              setBankName('')
+              setAccountNumber('')
+              setAccountName('')
+              Alert.alert('Withdrawal requested', 'Your coin withdrawal request has been submitted.')
+            } catch (err) {
+              Alert.alert('Withdrawal failed', err.response?.data?.message || 'Could not submit withdrawal request.')
+            } finally {
+              setWithdrawing(false)
+            }
+          },
+        },
+      ]
+    )
+  }
+
   if (!isAuthenticated) {
     return (
       <View style={[styles.screen, { paddingTop: insets.top, backgroundColor: '#101010' }]}>
@@ -325,7 +374,7 @@ export default function RewardsScreen({ navigation }) {
           <View style={styles.policyNotice}>
             <Ionicons name="information-circle-outline" size={18} color={GOLD} />
             <Text style={styles.policyNoticeText}>
-              Reward coins are optional NendPlay rewards. They have no cash value, cannot be transferred, and are only used for NendPlay ad-free access or plans.
+              Reward coins are optional NendPlay rewards. They can be redeemed for NendPlay ad-free access, plans, or verified cash withdrawals. Coins cannot be transferred.
             </Text>
           </View>
 
@@ -333,6 +382,73 @@ export default function RewardsScreen({ navigation }) {
             <AdBanner style={styles.adUnit} horizontalPadding={64} />
             <NendPlayAdCard placement="subscription" style={styles.adUnit} />
             <NativeAdvancedAd style={styles.adUnit} />
+          </View>
+
+          <View style={styles.withdrawPanel}>
+            <View style={styles.withdrawHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.withdrawTitle}>Convert coins to cash</Text>
+                <Text style={styles.withdrawCopy}>
+                  {withdrawalPolicy.minimumCoins.toLocaleString()} coins = N{withdrawalPolicy.minimumNaira.toLocaleString()}. Minimum withdrawal is N{withdrawalPolicy.minimumNaira.toLocaleString()}.
+                </Text>
+                {withdrawalPolicy.verifiedAccountRequired && !status?.isVerified ? (
+                  <Text style={styles.withdrawWarning}>Verified account required before withdrawal.</Text>
+                ) : null}
+              </View>
+              <View style={styles.withdrawValue}>
+                <Text style={styles.withdrawValueLabel}>Value</Text>
+                <Text style={styles.withdrawValueText}>N{Number.isFinite(withdrawalNairaAmount) ? withdrawalNairaAmount.toLocaleString() : 0}</Text>
+              </View>
+            </View>
+            <TextInput
+              value={withdrawCoins}
+              onChangeText={setWithdrawCoins}
+              keyboardType="number-pad"
+              placeholder="Coins to convert"
+              placeholderTextColor="#777777"
+              style={styles.withdrawInput}
+            />
+            <TextInput
+              value={bankName}
+              onChangeText={setBankName}
+              placeholder="Bank name"
+              placeholderTextColor="#777777"
+              style={styles.withdrawInput}
+            />
+            <TextInput
+              value={accountNumber}
+              onChangeText={setAccountNumber}
+              keyboardType="number-pad"
+              placeholder="Account number"
+              placeholderTextColor="#777777"
+              style={styles.withdrawInput}
+            />
+            <TextInput
+              value={accountName}
+              onChangeText={setAccountName}
+              placeholder="Account name"
+              placeholderTextColor="#777777"
+              style={styles.withdrawInput}
+            />
+            <TouchableOpacity
+              disabled={withdrawing || !status?.isVerified}
+              onPress={handleWithdrawal}
+              style={[styles.withdrawBtn, (!status?.isVerified || withdrawing) && styles.withdrawBtnDisabled]}>
+              {withdrawing ? <ActivityIndicator color="#111111" size="small" /> : <Text style={styles.withdrawBtnText}>Request withdrawal</Text>}
+            </TouchableOpacity>
+            {status?.withdrawals?.length ? (
+              <View style={styles.withdrawHistory}>
+                <Text style={styles.withdrawHistoryTitle}>Recent withdrawals</Text>
+                {status.withdrawals.slice(0, 3).map((item) => (
+                  <View key={item._id} style={styles.withdrawHistoryRow}>
+                    <Text style={styles.withdrawHistoryText}>
+                      {Number(item.coins).toLocaleString()} coins to N{Number(item.amountNaira).toLocaleString()}
+                    </Text>
+                    <Text style={styles.withdrawHistoryStatus}>{item.status}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
           </View>
 
           <View style={styles.paidPanel}>
@@ -471,7 +587,7 @@ export default function RewardsScreen({ navigation }) {
                   <View key={item._id} style={styles.historyRow}>
                     <View>
                       <Text style={styles.historyLabel}>
-                        {item.type === 'earn' ? 'Coins earned' : 'Reward redeemed'}
+                        {item.type === 'earn' ? 'Coins earned' : item.type === 'withdrawal' ? 'Withdrawal requested' : 'Reward redeemed'}
                       </Text>
                       <Text style={styles.historyDate}>{formatDate(item.createdAt)}</Text>
                     </View>
@@ -547,6 +663,57 @@ const styles = StyleSheet.create({
   policyNoticeText: { color: '#D9D0AF', flex: 1, fontSize: 12, lineHeight: 17 },
   adStack: { marginHorizontal: 18, marginBottom: 18 },
   adUnit: { marginHorizontal: 0 },
+  withdrawPanel: {
+    marginHorizontal: 18,
+    marginBottom: 22,
+    padding: 16,
+    borderRadius: 20,
+    backgroundColor: '#1D1E22',
+    borderWidth: 1,
+    borderColor: 'rgba(245,197,66,0.28)',
+  },
+  withdrawHeader: { flexDirection: 'row', gap: 12, alignItems: 'flex-start', marginBottom: 14 },
+  withdrawTitle: { color: '#FFFFFF', fontSize: 20, fontWeight: '900' },
+  withdrawCopy: { color: '#B8B8B8', fontSize: 12, lineHeight: 18, marginTop: 5 },
+  withdrawWarning: { color: GOLD, fontSize: 12, fontWeight: '900', marginTop: 8 },
+  withdrawValue: {
+    minWidth: 88,
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    backgroundColor: 'rgba(245,197,66,0.12)',
+    alignItems: 'flex-end',
+  },
+  withdrawValueLabel: { color: '#A8A8A8', fontSize: 10, fontWeight: '900' },
+  withdrawValueText: { color: '#FFFFFF', fontSize: 17, fontWeight: '900', marginTop: 2 },
+  withdrawInput: {
+    minHeight: 46,
+    borderRadius: 13,
+    borderWidth: 1,
+    borderColor: '#3A3A3A',
+    backgroundColor: '#111113',
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+    paddingHorizontal: 14,
+    marginTop: 10,
+  },
+  withdrawBtn: { backgroundColor: GOLD, borderRadius: 14, paddingVertical: 13, alignItems: 'center', marginTop: 14 },
+  withdrawBtnDisabled: { opacity: 0.5 },
+  withdrawBtnText: { color: '#111111', fontSize: 15, fontWeight: '900' },
+  withdrawHistory: { marginTop: 14, gap: 8 },
+  withdrawHistoryTitle: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
+  withdrawHistoryRow: {
+    borderRadius: 12,
+    backgroundColor: '#111113',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  withdrawHistoryText: { color: '#FFFFFF', fontSize: 12, fontWeight: '800', flex: 1 },
+  withdrawHistoryStatus: { color: GOLD, fontSize: 11, fontWeight: '900', textTransform: 'capitalize' },
   paidPanel: {
     marginHorizontal: 18,
     marginBottom: 22,
