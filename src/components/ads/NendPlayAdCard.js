@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Image, Linking, Pressable, Text, TouchableOpacity, View } from 'react-native'
+import { Image, Linking, Pressable, Share, Text, TouchableOpacity, View } from 'react-native'
 import { VideoView, useVideoPlayer } from 'expo-video'
 import { Ionicons } from '@expo/vector-icons'
 import Constants from 'expo-constants'
@@ -37,11 +37,11 @@ function AdVideoCreative({ uri, backgroundColor }) {
   }, [muted, player])
 
   return (
-    <View style={{ width: '100%', aspectRatio: 16 / 9, backgroundColor }}>
+    <View style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor }}>
       <VideoView
         player={player}
         nativeControls={false}
-        contentFit="contain"
+        contentFit="cover"
         style={{ width: '100%', height: '100%', backgroundColor }}
       />
       <Pressable
@@ -72,8 +72,8 @@ function AdCreative({ ad, backgroundColor }) {
   return (
     <Image
       source={{ uri: ad.mediaUrl }}
-      style={{ width: '100%', aspectRatio: 16 / 9, backgroundColor }}
-      resizeMode="contain"
+      style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor }}
+      resizeMode="cover"
     />
   )
 }
@@ -127,6 +127,17 @@ export default function NendPlayAdCard({ placement = 'home', style }) {
     }
   }
 
+  const shareAd = async (adData) => {
+    const shareUrl = adData?.targetUrl || 'https://nendplay.com/advertise'
+    try {
+      await Share.share({
+        title: adData?.title || 'Advertise on NendPlay',
+        message: `${adData?.title || 'Advertise on NendPlay'}\n${shareUrl}`,
+        url: shareUrl,
+      })
+    } catch {}
+  }
+
   if (hasAdFreeAccess(user) || loading) return null
 
   if (!ad) {
@@ -138,34 +149,47 @@ export default function NendPlayAdCard({ placement = 'home', style }) {
         style={[{
           marginHorizontal: 16,
           marginBottom: 18,
-          borderRadius: 18,
+          borderRadius: 26,
           overflow: 'hidden',
-          backgroundColor: c.surface,
+          backgroundColor: '#081122',
           borderWidth: 1,
-          borderColor: c.border,
-          padding: 14,
+          borderColor: 'rgba(255,255,255,0.16)',
+          minHeight: 220,
         }, style]}
       >
-        <Text style={{
-          alignSelf: 'flex-start',
-          color: c.primary,
-          backgroundColor: c.surfaceHigh,
-          borderRadius: 8,
-          overflow: 'hidden',
-          paddingHorizontal: 8,
-          paddingVertical: 3,
-          fontSize: 10,
-          fontWeight: '900',
-          marginBottom: 8,
-        }}>
-          SPONSORED
-        </Text>
-        <Text style={{ color: c.text, fontSize: 16, fontWeight: '900' }}>
-          Advertise on NendPlay
-        </Text>
-        <Text style={{ color: c.textMuted, fontSize: 13, lineHeight: 18, marginTop: 8 }}>
-          Reach movie, music, news, and NovelHub audiences across web and mobile.
-        </Text>
+        <View style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: '#0B1020' }} />
+        <View style={{ position: 'absolute', top: 14, left: 14, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ color: c.primary, fontWeight: '900', fontSize: 15 }}>NPL</Text>
+          </View>
+          <View style={{ borderRadius: 999, backgroundColor: 'rgba(0,0,0,0.48)', paddingHorizontal: 14, paddingVertical: 8 }}>
+            <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '900' }}>Sponsored</Text>
+          </View>
+        </View>
+        <View style={{ position: 'absolute', left: 14, right: 14, bottom: 14, borderRadius: 22, borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', backgroundColor: 'rgba(0,0,0,0.46)', padding: 14 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <View style={{ width: 58, height: 58, borderRadius: 29, backgroundColor: '#111827', borderWidth: 2, borderColor: 'rgba(255,255,255,0.42)', alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ color: '#F6C85F', fontSize: 22, fontWeight: '900' }}>N</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: '#FFFFFF', fontSize: 17, fontWeight: '900' }} numberOfLines={1}>NendPlay Ads <Ionicons name="checkmark-circle" size={16} color="#3B82F6" /></Text>
+              <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '900', marginTop: 3 }} numberOfLines={1}>Advertise on NendPlay</Text>
+              <Text style={{ color: 'rgba(255,255,255,0.78)', fontSize: 12, lineHeight: 17, marginTop: 4 }} numberOfLines={2}>
+                Reach movie, music, news, and NovelHub audiences across web and mobile.
+              </Text>
+            </View>
+          </View>
+          <View style={{ marginTop: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Ionicons name="bookmark-outline" size={27} color="#FFFFFF" />
+            <View style={{ borderRadius: 16, backgroundColor: '#F6C85F', paddingHorizontal: 20, paddingVertical: 11, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={{ color: '#090909', fontSize: 15, fontWeight: '900' }}>Learn More</Text>
+              <Ionicons name="chevron-forward" size={20} color="#090909" />
+            </View>
+            <Pressable onPress={() => shareAd({ title: 'Advertise on NendPlay', targetUrl: 'https://nendplay.com/advertise' })} hitSlop={10}>
+              <Ionicons name="share-social-outline" size={27} color="#FFFFFF" />
+            </Pressable>
+          </View>
+        </View>
       </TouchableOpacity>
     )
   }
@@ -177,42 +201,58 @@ export default function NendPlayAdCard({ placement = 'home', style }) {
       style={[{
         marginHorizontal: 16,
         marginBottom: 18,
-        borderRadius: 18,
+        borderRadius: 26,
         overflow: 'hidden',
-        backgroundColor: c.surface,
+        backgroundColor: '#05050F',
         borderWidth: 1,
-        borderColor: c.border,
+        borderColor: 'rgba(255,255,255,0.16)',
+        minHeight: 230,
       }, style]}
     >
       <AdCreative ad={ad} backgroundColor={c.surfaceHigh} />
-      <View style={{ padding: 14 }}>
-        <Text style={{
-          alignSelf: 'flex-start',
-          color: c.primary,
-          backgroundColor: c.surfaceHigh,
-          borderRadius: 8,
-          overflow: 'hidden',
-          paddingHorizontal: 8,
-          paddingVertical: 3,
-          fontSize: 10,
-          fontWeight: '900',
-          marginBottom: 8,
-        }}>
-          SPONSORED
-        </Text>
-        <Text style={{ color: c.text, fontSize: 16, fontWeight: '900' }} numberOfLines={2}>
-          {ad.title}
-        </Text>
-        {ad.description ? (
-          <Text style={{ color: c.textMuted, fontSize: 13, lineHeight: 18, marginTop: 8 }} numberOfLines={3}>
-            {ad.description}
-          </Text>
-        ) : null}
-        {ad.advertiserName ? (
-          <Text style={{ color: c.textMuted, fontSize: 12, fontWeight: '800', marginTop: 10 }} numberOfLines={1}>
-            {ad.advertiserName}
-          </Text>
-        ) : null}
+      <View style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: 'rgba(0,0,0,0.20)' }} />
+      <View style={{ position: 'absolute', left: 14, right: 14, top: 14, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={{ color: c.primary, fontWeight: '900', fontSize: 15 }}>NPL</Text>
+        </View>
+        <View style={{ borderRadius: 999, backgroundColor: 'rgba(0,0,0,0.48)', paddingHorizontal: 14, paddingVertical: 8 }}>
+          <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '900' }}>Sponsored</Text>
+        </View>
+      </View>
+
+      <View style={{ position: 'absolute', left: 14, right: 14, bottom: 14, borderRadius: 22, borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', backgroundColor: 'rgba(0,0,0,0.48)', padding: 14 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <View style={{ width: 58, height: 58, borderRadius: 29, overflow: 'hidden', backgroundColor: '#111827', borderWidth: 2, borderColor: 'rgba(255,255,255,0.42)', alignItems: 'center', justifyContent: 'center' }}>
+            {ad.logoUrl ? (
+              <Image source={{ uri: ad.logoUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+            ) : (
+              <Text style={{ color: '#F6C85F', fontSize: 22, fontWeight: '900' }}>N</Text>
+            )}
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: '#FFFFFF', fontSize: 17, fontWeight: '900' }} numberOfLines={1}>
+              {ad.advertiserName || 'NendPlay Partner'} <Ionicons name="checkmark-circle" size={16} color="#3B82F6" />
+            </Text>
+            <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '900', marginTop: 3 }} numberOfLines={1}>
+              {ad.title}
+            </Text>
+            {ad.description ? (
+              <Text style={{ color: 'rgba(255,255,255,0.78)', fontSize: 12, lineHeight: 17, marginTop: 4 }} numberOfLines={2}>
+                {ad.description}
+              </Text>
+            ) : null}
+          </View>
+        </View>
+        <View style={{ marginTop: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Ionicons name="bookmark-outline" size={27} color="#FFFFFF" />
+          <View style={{ borderRadius: 16, backgroundColor: '#F6C85F', paddingHorizontal: 20, paddingVertical: 11, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text style={{ color: '#090909', fontSize: 15, fontWeight: '900' }}>{ad.cta || ad.callToAction || 'Learn More'}</Text>
+            <Ionicons name="chevron-forward" size={20} color="#090909" />
+          </View>
+          <Pressable onPress={() => shareAd(ad)} hitSlop={10}>
+            <Ionicons name="share-social-outline" size={27} color="#FFFFFF" />
+          </Pressable>
+        </View>
       </View>
     </TouchableOpacity>
   )
