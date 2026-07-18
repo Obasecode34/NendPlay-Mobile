@@ -76,7 +76,15 @@ function ShortsAdItem({ itemHeight, isActive, onEnded, adType = 'nendplay' }) {
   const renderAd = () => {
     if (adType === 'banner') return <AdBanner style={{ marginHorizontal: 0, marginBottom: 0 }} />
     if (adType === 'native') return <NativeAdvancedAd style={{ marginHorizontal: 0, marginBottom: 0 }} />
-    return <NendPlayAdCard placement="shorts" style={{ marginHorizontal: 0, marginBottom: 0 }} />
+    return <NendPlayAdCard placement="shorts" variant="shorts" style={StyleSheet.absoluteFillObject} />
+  }
+
+  if (adType === 'nendplay') {
+    return (
+      <View style={[styles.shortPage, { height: itemHeight }]}>
+        {renderAd()}
+      </View>
+    )
   }
 
   return (
