@@ -28,6 +28,15 @@ function formatCount(value = 0) {
   return `${count}`
 }
 
+function shuffleItems(items = []) {
+  const shuffled = [...items]
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1))
+    ;[shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]]
+  }
+  return shuffled
+}
+
 function getCreator(item) {
   const creator = item.uploadedBy || {}
   return {
@@ -486,9 +495,10 @@ export default function ShortsScreen({ route }) {
       setShorts(prev => {
         const nextMedia = Array.isArray(media) ? media : []
         if (page === 1) {
+          const randomizedMedia = shuffleItems(nextMedia)
           const merged = openId
-            ? [...prev.filter((short) => short._id === openId), ...nextMedia.filter((short) => short._id !== openId)]
-            : nextMedia
+            ? [...prev.filter((short) => short._id === openId), ...randomizedMedia.filter((short) => short._id !== openId)]
+            : randomizedMedia
           return merged
         }
         const seen = new Set(prev.map((short) => short._id))
@@ -574,6 +584,12 @@ export default function ShortsScreen({ route }) {
       setPage((prev) => prev + 1)
     }
   }, [feedItems.length, hasMore])
+
+  useEffect(() => {
+    if (feedItems.length <= 1) return undefined
+    const timer = setTimeout(() => advanceToNext(activeIndex), 240000)
+    return () => clearTimeout(timer)
+  }, [activeIndex, advanceToNext, feedItems.length])
 
   if (loading) {
     return (
