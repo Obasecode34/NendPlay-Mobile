@@ -42,7 +42,7 @@ function AdVideoCreative({ uri, backgroundColor }) {
         player={player}
         nativeControls={false}
         contentFit="cover"
-        style={{ width: '100%', height: '100%', backgroundColor }}
+        style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor }}
       />
       <Pressable
         onPress={() => setMuted((value) => !value)}
@@ -72,7 +72,7 @@ function AdCreative({ ad, backgroundColor }) {
   return (
     <Image
       source={{ uri: ad.mediaUrl }}
-      style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor }}
+      style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, width: '100%', height: '100%', backgroundColor }}
       resizeMode="cover"
     />
   )
@@ -154,6 +154,7 @@ export default function NendPlayAdCard({ placement = 'home', style }) {
           backgroundColor: '#081122',
           borderWidth: 1,
           borderColor: 'rgba(255,255,255,0.16)',
+          aspectRatio: 16 / 9,
           minHeight: 220,
         }, style]}
       >
@@ -206,6 +207,7 @@ export default function NendPlayAdCard({ placement = 'home', style }) {
         backgroundColor: '#05050F',
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.16)',
+        aspectRatio: 16 / 9,
         minHeight: 230,
       }, style]}
     >
