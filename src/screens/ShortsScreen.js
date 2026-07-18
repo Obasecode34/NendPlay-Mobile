@@ -39,11 +39,13 @@ function getCreator(item) {
 function ActionButton({ icon, activeIcon, label, count, active, activeColor = '#FFFFFF', onPress }) {
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.78} style={styles.actionButton}>
-      <Ionicons
-        name={active && activeIcon ? activeIcon : icon}
-        size={30}
-        color={active ? activeColor : '#FFFFFF'}
-      />
+      <View style={styles.actionIconBubble}>
+        <Ionicons
+          name={active && activeIcon ? activeIcon : icon}
+          size={29}
+          color={active ? activeColor : '#FFFFFF'}
+        />
+      </View>
       <Text style={styles.actionLabel} numberOfLines={1}>
         {count !== undefined ? formatCount(count) : label}
       </Text>
@@ -354,6 +356,7 @@ function ShortItem({ item, isActive, theme, itemHeight, onPausedChange, onEnded 
       />
 
       <Pressable onPress={() => setIsPaused((prev) => !prev)} style={styles.tapLayer} />
+      <View pointerEvents="none" style={styles.shortGradient} />
 
       {isPaused && (
         <View pointerEvents="none" style={styles.pauseOverlay}>
@@ -361,51 +364,28 @@ function ShortItem({ item, isActive, theme, itemHeight, onPausedChange, onEnded 
         </View>
       )}
 
+      <View style={styles.shortTopBar}>
+        <View style={styles.nplLogoBlock}>
+          <Text style={styles.nplLogoText}>NPL</Text>
+          <Text style={styles.nplLogoSub}>NENDPLAY</Text>
+        </View>
+        <TouchableOpacity onPress={() => Alert.alert('Search', 'Shorts search is coming soon.')} style={styles.shortSearchButton}>
+          <Ionicons name="search-outline" size={38} color="#FFFFFF" />
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.actionRail}>
-        <ActionButton icon="thumbs-up-outline" activeIcon="thumbs-up" count={likeCount} active={liked} onPress={handleLike} />
-        <ActionButton icon="thumbs-down-outline" activeIcon="thumbs-down" count={dislikeCount} active={disliked} onPress={handleDislike} />
+        <ActionButton icon="heart" activeIcon="heart" count={likeCount} active={liked} activeColor="#FF375F" onPress={handleLike} />
         <ActionButton icon="chatbubble-ellipses-outline" count={commentCount} onPress={handleToggleComment} />
-        <ActionButton icon="arrow-redo-outline" label="Share" onPress={handleShare} />
         <ActionButton icon="bookmark-outline" activeIcon="bookmark" label={saved ? 'Saved' : 'Save'} active={saved} onPress={handleSave} />
         <ActionButton icon="download-outline" label="Download" onPress={handleDownload} />
-        <View style={styles.soundTile}>
-          {creator.avatar ? (
-            <Image source={{ uri: creator.avatar }} style={styles.soundImage} />
-          ) : (
-            <Ionicons name="musical-notes" size={20} color="#FFFFFF" />
-          )}
-        </View>
+        <ActionButton icon="arrow-redo" label="Share" onPress={handleShare} />
       </View>
 
       <View style={styles.captionArea}>
-        <View style={styles.creatorRow}>
-          <View style={styles.avatar}>
-            {creator.avatar ? (
-              <Image source={{ uri: creator.avatar }} style={styles.avatarImage} />
-            ) : (
-              <Text style={styles.avatarInitial}>{creator.name.charAt(0).toUpperCase()}</Text>
-            )}
-          </View>
-          <Text style={styles.creatorName} numberOfLines={1}>@{creator.name}</Text>
-          <TouchableOpacity
-            activeOpacity={0.84}
-            onPress={handleSubscribe}
-            style={[styles.subscribeButton, subscribed && styles.subscribedButton]}>
-            <Text style={[styles.subscribeText, subscribed && styles.subscribedText]}>
-              {subscribed ? 'Subscribed' : 'Subscribe'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-        {subscriberCount > 0 && (
-          <Text style={styles.subscriberText}>{formatCount(subscriberCount)} subscribers</Text>
-        )}
-
-        <View style={styles.titleLine}>
-          <Ionicons name="play" size={18} color="#FFFFFF" />
-          <Text style={styles.titleText} numberOfLines={1}>{item.title}</Text>
-        </View>
+        <Text style={styles.titleText} numberOfLines={2}>{item.title}</Text>
         {!!item.description && (
-          <Text style={styles.descriptionText} numberOfLines={2}>{item.description}</Text>
+          <Text style={styles.descriptionText} numberOfLines={1}>{item.description}</Text>
         )}
       </View>
 
@@ -618,22 +598,8 @@ export default function ShortsScreen({ route }) {
       style={{ flex: 1, backgroundColor: '#000' }}
       onLayout={(event) => setScreenHeight(event.nativeEvent.layout.height)}
     >
-      <View style={[styles.headerWrap, { paddingTop: insets.top + 8 }]}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Shorts</Text>
-          <View style={styles.headerActions}>
-            <TouchableOpacity onPress={() => Alert.alert('Search', 'Shorts search is coming soon.')} style={styles.iconButton}>
-              <Ionicons name="search-outline" size={32} color="#FFFFFF" />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => Alert.alert('Shorts', 'Settings and report tools are coming soon.')} style={styles.iconButton}>
-              <Ionicons name="ellipsis-vertical" size={28} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-
       {activePaused && (
-        <View style={[styles.topicRow, { top: headerHeight + 14 }]}>
+        <View style={[styles.topicRow, { top: insets.top + 96 }]}>
           <TopicPill icon="albums-outline" label="Subscriptions" onPress={() => switchFeedMode('subscriptions')} />
           {feedMode === 'subscriptions' && (
             <TopicPill icon="sparkles-outline" label="All Shorts" onPress={() => switchFeedMode('all')} />
@@ -702,6 +668,10 @@ const styles = StyleSheet.create({
   },
   video: { width },
   tapLayer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  shortGradient: {
+    position: 'absolute', left: 0, right: 0, top: 0, bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.08)',
+  },
   pauseOverlay: {
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
     justifyContent: 'center', alignItems: 'center',
@@ -723,13 +693,35 @@ const styles = StyleSheet.create({
     alignItems: 'center', gap: 8, backgroundColor: 'rgba(32,32,32,0.62)',
   },
   topicText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
-  actionRail: {
-    position: 'absolute', right: 10, bottom: ACTION_RAIL_BOTTOM,
-    alignItems: 'center', gap: 12, width: 70,
+  shortTopBar: {
+    position: 'absolute', left: 26, right: 26, top: 58, zIndex: 8,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
   },
-  actionButton: { width: 70, alignItems: 'center' },
+  nplLogoBlock: { alignItems: 'flex-start' },
+  nplLogoText: {
+    color: '#FFFFFF', fontSize: 42, lineHeight: 42, fontWeight: '900',
+    letterSpacing: 0, textShadowColor: 'rgba(0,0,0,0.55)', textShadowRadius: 8,
+  },
+  nplLogoSub: {
+    color: '#FFFFFF', fontSize: 9, fontWeight: '800', letterSpacing: 4,
+    marginLeft: 3, textShadowColor: 'rgba(0,0,0,0.55)', textShadowRadius: 6,
+  },
+  shortSearchButton: {
+    width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.18)',
+  },
+  actionRail: {
+    position: 'absolute', right: 12, bottom: ACTION_RAIL_BOTTOM + 92,
+    alignItems: 'center', gap: 20, width: 76,
+  },
+  actionButton: { width: 76, alignItems: 'center' },
+  actionIconBubble: {
+    width: 62, height: 62, borderRadius: 31,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.22)',
+  },
   actionLabel: {
-    color: '#FFFFFF', fontSize: 12, fontWeight: '700', marginTop: 3,
+    color: '#FFFFFF', fontSize: 14, fontWeight: '800', marginTop: 6,
     textShadowColor: 'rgba(0,0,0,0.7)', textShadowRadius: 4,
   },
   soundTile: {
@@ -738,7 +730,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.16)',
   },
   soundImage: { width: '100%', height: '100%' },
-  captionArea: { position: 'absolute', left: 14, right: 88, bottom: 24 },
+  captionArea: { position: 'absolute', left: 26, right: 100, bottom: 58 },
   creatorRow: { flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 12 },
   avatar: {
     width: 42, height: 42, borderRadius: 21, overflow: 'hidden',
@@ -763,8 +755,14 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   titleLine: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
-  titleText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800', flex: 1 },
-  descriptionText: { color: 'rgba(255,255,255,0.9)', fontSize: 14, lineHeight: 19 },
+  titleText: {
+    color: '#FFFFFF', fontSize: 21, fontWeight: '900',
+    textShadowColor: 'rgba(0,0,0,0.75)', textShadowRadius: 8,
+  },
+  descriptionText: {
+    color: 'rgba(255,255,255,0.82)', fontSize: 13, lineHeight: 18, marginTop: 6,
+    textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 4,
+  },
   commentPanel: {
     position: 'absolute', left: 12, right: 12, bottom: 58,
     backgroundColor: 'rgba(0,0,0,0.92)', borderRadius: 16, padding: 12, maxHeight: 300,
@@ -787,8 +785,8 @@ const styles = StyleSheet.create({
   },
   durationText: { color: '#FFFFFF', fontSize: 11, fontFamily: 'monospace' },
   progressTrack: {
-    position: 'absolute', left: 0, right: 0, bottom: 0, height: 3,
-    backgroundColor: 'rgba(255,255,255,0.32)',
+    position: 'absolute', left: 26, right: 26, bottom: 24, height: 4,
+    borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.42)', overflow: 'hidden',
   },
-  progressFill: { height: '100%', backgroundColor: '#FF1744' },
+  progressFill: { height: '100%', borderRadius: 3, backgroundColor: '#FFFFFF' },
 })
