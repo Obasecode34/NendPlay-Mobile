@@ -284,6 +284,84 @@ export default function NendPlayAdCard({ placement = 'home', style, variant = 'd
 
   if (variant === 'shorts') return renderShortsAd(ad)
 
+  if (placement !== 'home') {
+    const advertiser = ad.advertiserName || 'NendPlay Partner'
+    const cta = ad.cta || ad.callToAction || 'Learn More'
+
+    return (
+      <TouchableOpacity
+        activeOpacity={0.88}
+        onPress={openAd}
+        style={[{
+          marginHorizontal: 16,
+          marginBottom: 18,
+          borderRadius: 26,
+          overflow: 'hidden',
+          backgroundColor: 'rgba(255,255,255,0.07)',
+          borderWidth: 1,
+          borderColor: 'rgba(255,255,255,0.20)',
+          minHeight: 270,
+          padding: 14,
+        }, style]}
+      >
+        <View style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, opacity: 0.42 }}>
+          <AdCreative ad={ad} backgroundColor="#05050F" />
+        </View>
+        <View style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: 'rgba(3,7,18,0.82)' }} />
+
+        <View style={{ alignSelf: 'center', borderRadius: 999, borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)', backgroundColor: 'rgba(255,255,255,0.10)', paddingHorizontal: 18, paddingVertical: 7, marginBottom: 14 }}>
+          <Text style={{ color: 'rgba(255,255,255,0.82)', fontSize: 12, fontWeight: '900', letterSpacing: 0.4, textTransform: 'uppercase' }}>Sponsored</Text>
+        </View>
+
+        <View style={{ flexDirection: 'row', gap: 14, alignItems: 'stretch' }}>
+          <View style={{ flex: 0.9, justifyContent: 'space-between', minHeight: 205 }}>
+            <View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                <View style={{ width: 64, height: 64, borderRadius: 32, overflow: 'hidden', backgroundColor: '#05050F', borderWidth: 2, borderColor: 'rgba(255,255,255,0.78)', alignItems: 'center', justifyContent: 'center' }}>
+                  {ad.logoUrl ? (
+                    <Image source={{ uri: ad.logoUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                  ) : (
+                    <Text style={{ color: '#F6C85F', fontSize: 18, fontWeight: '900' }}>NPL</Text>
+                  )}
+                </View>
+                <Text style={{ flex: 1, color: '#FFFFFF', fontSize: 18, fontWeight: '900' }} numberOfLines={1}>
+                  {advertiser} <Ionicons name="checkmark-circle" size={16} color="#3B82F6" />
+                </Text>
+              </View>
+
+              <Text style={{ color: '#FFFFFF', fontSize: 22, fontWeight: '900', lineHeight: 27 }} numberOfLines={2}>
+                {ad.title}
+              </Text>
+              {ad.description ? (
+                <Text style={{ color: 'rgba(255,255,255,0.78)', fontSize: 15, lineHeight: 22, marginTop: 12 }} numberOfLines={3}>
+                  {ad.description}
+                </Text>
+              ) : null}
+            </View>
+
+            <Pressable
+              onPress={openAd}
+              style={{ alignSelf: 'flex-start', borderRadius: 17, backgroundColor: '#F6C85F', paddingHorizontal: 24, paddingVertical: 13, flexDirection: 'row', alignItems: 'center', gap: 8, zIndex: 3 }}
+            >
+              <Text style={{ color: '#090909', fontSize: 17, fontWeight: '900' }}>{cta}</Text>
+              <Ionicons name="chevron-forward" size={22} color="#090909" />
+            </Pressable>
+          </View>
+
+          <View style={{ flex: 1, minHeight: 205, borderRadius: 22, overflow: 'hidden', backgroundColor: '#05050F', borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)' }}>
+            <AdCreative ad={ad} backgroundColor="#05050F" />
+            <View style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: 'rgba(0,0,0,0.05)' }} />
+            <Pressable onPress={() => shareAd(ad)} hitSlop={10} style={{ position: 'absolute', right: 10, bottom: 10, width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.52)' }}>
+              <Ionicons name="share-social-outline" size={24} color="#FFFFFF" />
+            </Pressable>
+          </View>
+        </View>
+
+        <Ionicons name="bookmark-outline" size={29} color="#FFFFFF" style={{ marginTop: 12 }} />
+      </TouchableOpacity>
+    )
+  }
+
   return (
     <TouchableOpacity
       activeOpacity={0.88}
